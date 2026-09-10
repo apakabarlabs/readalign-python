@@ -21,9 +21,11 @@ def speech_threshold(frames: Sequence[float]) -> float:
 
 
 def speech_level(frames: Sequence[float]) -> float:
-    ordered = sorted(frames)
-    louder = ordered[len(ordered) // 2 :]
-    return max(sum(louder) / len(louder), 1e-6)
+    if not frames:
+        return rules().quietest_speech
+    quieter = int(len(frames) * (1 - rules().speech_from_loudest_share))
+    louder = sorted(frames)[quieter:]
+    return max(sum(louder) / len(louder), rules().quietest_speech)
 
 
 def held(

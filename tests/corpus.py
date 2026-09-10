@@ -35,6 +35,12 @@ def weighting_for(case: dict) -> SpeechWeighting:
     return WEIGHTINGS[case.get("weighting", "english")]
 
 
+def waveform_of(case: dict) -> list[float]:
+    return [
+        stretch["level"] for stretch in case["waveform"] for _ in range(round(stretch["seconds"] * case["sample_rate"]))
+    ]
+
+
 def heard_words(case: dict) -> list[RecognizedWord]:
     return [RecognizedWord(word["text"], word["start"], word["end"]) for word in case["heard"]]
 

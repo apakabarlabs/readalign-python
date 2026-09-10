@@ -4,10 +4,11 @@ import pytest
 
 from readalign.aligner import align, fill, match, pair
 from readalign.rules import rules
-from readalign.silence import held
+from readalign.silence import energy_frames, held, speech_level
 from readalign.weighting import EnglishSyllableWeighting
 from readalign.words import RecognizedWord, WordSpan, normalize, printed_parts, similarity
 from tests.corpus import (
+    TOLERANCE,
     asserts_something,
     cases,
     check_span,
@@ -15,6 +16,7 @@ from tests.corpus import (
     heard_words,
     load,
     patch_from,
+    waveform_of,
     weighting_for,
 )
 
@@ -64,7 +66,7 @@ def test_places_words_as_the_corpus_says(case: dict) -> None:
     if run:
         for index in range(run[0], run[1] - 1):
             earlier, later = placed[index], placed[index + 1]
-            assert abs(later.start - earlier.end) < 0.001, f"{name}: words {index} and {index + 1} do not touch"
+            assert abs(later.start - earlier.end) < TOLERANCE, f"{name}: words {index} and {index + 1} do not touch"
 
 
 @named("fill_tests.yaml")
@@ -81,7 +83,7 @@ def test_fills_as_the_corpus_says(case: dict) -> None:
 
     if case.get("non_overlapping"):
         for earlier, later in itertools.pairwise(spans):
-            assert later.start >= earlier.end - 0.001, f"{name}: two words claim the same instant"
+            assert later.start >= earlier.end - TOLERANCE, f"{name}: two words claim the same instant"
 
 
 @named("pair_tests.yaml")
@@ -109,16 +111,29 @@ def test_holds_as_the_corpus_says(case: dict) -> None:
     name = case["name"]
     assert asserts_something(case, "want"), f"{name}: asserts nothing"
 
-    samples = [
-        stretch["level"] for stretch in case["waveform"] for _ in range(round(stretch["seconds"] * case["sample_rate"]))
-    ]
     marks = [WordSpan(mark["start"], mark["end"]) for mark in case["spans"]]
 
-    spans = held(marks, samples, case["sample_rate"], case.get("limit", rules().hold_limit))
+    spans = held(marks, waveform_of(case), case["sample_rate"], case.get("limit", rules().hold_limit))
 
     check_well_formed(spans, len(marks), name)
     for expectation in case.get("want", []):
         check_span(spans[expectation["word"]], expectation, name)
+
+
+SPEECH_LEVEL_CASES = load("hold_tests.yaml")["speech_level"]
+
+
+@pytest.mark.parametrize("case", SPEECH_LEVEL_CASES, ids=[case["name"] for case in SPEECH_LEVEL_CASES])
+def test_measures_how_loudly_the_recording_speaks(case: dict) -> None:
+    name = case["name"]
+    assert asserts_something(case, "equals", "at_least"), f"{name}: pins nothing"
+
+    level = speech_level(energy_frames(waveform_of(case), case["sample_rate"]))
+
+    if "equals" in case:
+        assert abs(level - case["equals"]) < TOLERANCE, f"{name}: {level}"
+    if "at_least" in case:
+        assert level >= case["at_least"], f"{name}: {level}"
 
 
 def word_cases(section: str) -> pytest.MarkDecorator:
@@ -140,7 +155,7 @@ def test_normalizes_as_the_corpus_says(case: dict) -> None:
 def test_scores_likeness_as_the_corpus_says(case: dict) -> None:
     score = similarity(case["left"], case["right"])
     if "equals" in case:
-        assert abs(score - case["equals"]) < 0.001
+        assert abs(score - case["equals"]) < TOLERANCE
     if "at_least" in case:
         assert score >= case["at_least"]
     if "at_most" in case:

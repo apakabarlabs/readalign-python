@@ -26,6 +26,8 @@ class Rules:
     speech_above_room: float
     quietest_room: float
     hold_limit: float
+    speech_from_loudest_share: float
+    quietest_speech: float
 
     def lifts(self, character: str) -> bool:
         return int(self.lifted_marks_from, 16) <= ord(character) <= int(self.lifted_marks_to, 16)
