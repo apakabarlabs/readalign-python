@@ -1,4 +1,4 @@
 PyYAML>=6.0.3
 regex>=2026.1.15
-pytest>=8.4.2
+pytest>=9.1.1
 ruff>=0.16.6
