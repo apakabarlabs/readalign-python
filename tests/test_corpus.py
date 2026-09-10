@@ -1,19 +1,20 @@
 import pytest
 
-from .aligner import align, fill, match, pair
-from .corpus import (
+from readalign.aligner import align, fill, match, pair
+from readalign.rules import rules
+from readalign.silence import held
+from readalign.weighting import EnglishSyllableWeighting
+from readalign.words import RecognizedWord, WordSpan, normalize, printed_parts, similarity
+from tests.corpus import (
     asserts_something,
     cases,
     check_span,
     check_well_formed,
     heard_words,
+    load,
     patch_from,
     weighting_for,
 )
-from .rules import rules
-from .silence import held
-from .weighting import EnglishSyllableWeighting
-from .words import RecognizedWord, WordSpan, normalize, similarity
 
 
 def named(name):
@@ -119,10 +120,13 @@ def test_holds_as_the_corpus_says(case):
 
 
 def word_cases(section: str):
-    from .corpus import load
-
     found = load("word_tests.yaml")[section]
     return pytest.mark.parametrize("case", found, ids=[str(case) for case in found])
+
+
+@word_cases("printed_parts")
+def test_counts_printed_parts_as_the_corpus_says(case):
+    assert printed_parts(case["word"]) == case["parts"], case["word"]
 
 
 @word_cases("normalize")

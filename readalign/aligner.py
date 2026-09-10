@@ -1,3 +1,5 @@
+import math
+
 from .alignment import Alignment, Equivalent
 from .rules import rules
 from .weighting import EnglishSyllableWeighting, SpeechWeighting
@@ -126,6 +128,4 @@ def swallower(
 
 def speech_weight(word: str, weighting: SpeechWeighting) -> float:
     weight = weighting.weight(word)
-    if weight != weight or weight in (float("inf"), float("-inf")):
-        return 1.0
-    return max(weight, 1.0)
+    return max(weight, 1.0) if math.isfinite(weight) else 1.0

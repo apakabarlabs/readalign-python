@@ -30,10 +30,10 @@ jobs:
 
     - name: Lint
       run: |
-        ruff check readalign/
-        ruff format --check readalign/
+        ruff check .
+        ruff format --check .
 
     - name: Run tests
       run: |
-        pytest readalign/ -q
+        pytest tests/ -q
         pytest test_readme.py -q

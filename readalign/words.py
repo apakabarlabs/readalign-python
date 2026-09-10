@@ -1,6 +1,8 @@
 import unicodedata
 from dataclasses import dataclass
 
+import regex
+
 from .rules import rules
 
 
@@ -23,12 +25,21 @@ class WordMatch:
     heard: range
 
 
+def is_letter(cluster: str) -> bool:
+    return cluster[0].isalpha() or unicodedata.category(cluster[0]) == "Nl"
+
+
+def letters(word: str) -> list[str]:
+    lowered = unicodedata.normalize("NFC", word).lower()
+    return [cluster for cluster in regex.findall(r"\X", lowered) if is_letter(cluster)]
+
+
 def normalize(word: str) -> str:
-    return "".join(character for character in word.lower() if character.isalpha())
+    return "".join(letters(word))
 
 
 def printed_parts(word: str) -> int:
-    return max(len(word.split("-")), 1)
+    return max(len([part for part in word.split("-") if part]), 1)
 
 
 def fold(word: str) -> str:

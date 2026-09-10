@@ -3,14 +3,21 @@ from typing import Any
 
 import yaml
 
-from .weighting import EnglishSyllableWeighting, EvenWeighting, SpeechWeighting
-from .words import RecognizedWord, WordSpan
+from readalign.weighting import EnglishSyllableWeighting, EvenWeighting, SpeechWeighting
+from readalign.words import RecognizedWord, WordSpan
 
 TOLERANCE = 0.001
+
+
+class UnusableWeighting:
+    def weight(self, word: str) -> float:
+        return float("nan")
+
 
 WEIGHTINGS: dict[str, SpeechWeighting] = {
     "english": EnglishSyllableWeighting(),
     "even": EvenWeighting(),
+    "unusable": UnusableWeighting(),
 }
 
 
@@ -43,6 +50,8 @@ def check_span(span: WordSpan, expectation: dict, where: str) -> None:
         assert abs(span.end - expectation["end"]) < TOLERANCE, f"{subject}: end is {span.end}"
     if "start_at_least" in expectation:
         assert span.start >= expectation["start_at_least"] - TOLERANCE, f"{subject}: start is {span.start}"
+    if "end_at_least" in expectation:
+        assert span.end >= expectation["end_at_least"] - TOLERANCE, f"{subject}: end is {span.end}"
     if "end_at_most" in expectation:
         assert span.end <= expectation["end_at_most"] + TOLERANCE, f"{subject}: end is {span.end}"
 
