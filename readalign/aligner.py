@@ -127,5 +127,6 @@ def swallower(
 
 
 def speech_weight(word: str, weighting: SpeechWeighting) -> float:
+    lightest = rules().lightest_word
     weight = weighting.weight(word)
-    return max(weight, 1.0) if math.isfinite(weight) else 1.0
+    return max(weight, lightest) if math.isfinite(weight) else lightest

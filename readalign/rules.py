@@ -12,13 +12,23 @@ class Rules:
     gap_penalty: float
     mismatch_penalty: float
     room_enough: float
+    join_span: int
     english_vowels: str
+    silent_ending: str
+    silent_ending_except_after: str
+    shortest_with_a_silent_ending: int
+    lightest_word: float
+    lifted_marks_from: str
+    lifted_marks_to: str
     folded_letters: dict[str, str]
     frame_seconds: float
     room_quantile: float
     speech_above_room: float
     quietest_room: float
     hold_limit: float
+
+    def lifts(self, character: str) -> bool:
+        return int(self.lifted_marks_from, 16) <= ord(character) <= int(self.lifted_marks_to, 16)
 
 
 @lru_cache(maxsize=1)

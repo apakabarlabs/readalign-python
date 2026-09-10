@@ -6,6 +6,11 @@ from .words import WordMatch, normalize, printed_parts, similarity
 Equivalent = Callable[[str, str, str | None], bool]
 
 PAIR = 2
+"""Two rows or columns of the table, which is what a join needs to look back at.
+
+Not a tuned value: a pair is two by arithmetic. How far a join may reach on the
+heard side is `join_span` in the rules.
+"""
 
 
 class Alignment:
@@ -72,7 +77,7 @@ class Alignment:
         return self.worth(similarity(written, said), self.join_threshold)
 
     def spans(self, row: int) -> int:
-        return max(PAIR, self.printed_parts[row])
+        return max(rules().join_span, self.printed_parts[row])
 
     def scores(self) -> list[list[float]]:
         gap = rules().gap_penalty

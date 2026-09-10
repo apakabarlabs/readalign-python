@@ -43,8 +43,12 @@ def asserts_something(case: dict, *keys: str) -> bool:
     return any(case.get(key) for key in keys)
 
 
+PINS = ("start", "end", "start_at_least", "end_at_least", "end_at_most")
+
+
 def check_span(span: WordSpan, expectation: dict, where: str) -> None:
     subject = f"{where}, word {expectation['word']}"
+    assert any(pin in expectation for pin in PINS), f"{subject}: pins nothing, so a key here is misspelt"
     if "start" in expectation:
         assert abs(span.start - expectation["start"]) < TOLERANCE, f"{subject}: start is {span.start}"
     if "end" in expectation:
