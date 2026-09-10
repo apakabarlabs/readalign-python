@@ -5,6 +5,8 @@ from .words import WordMatch, normalize, printed_parts, similarity
 
 Equivalent = Callable[[str, str, str | None], bool]
 
+PAIR = 2
+
 
 class Alignment:
     def __init__(
@@ -70,7 +72,7 @@ class Alignment:
         return self.worth(similarity(written, said), self.join_threshold)
 
     def spans(self, row: int) -> int:
-        return max(2, self.printed_parts[row])
+        return max(PAIR, self.printed_parts[row])
 
     def scores(self) -> list[list[float]]:
         gap = rules().gap_penalty
@@ -86,62 +88,68 @@ class Alignment:
                 best = score[row - 1][column - 1] + self.straight(row - 1, column - 1)
                 best = max(best, score[row - 1][column] + gap)
                 best = max(best, score[row][column - 1] + gap)
-                for span in range(2, self.spans(row - 1) + 1):
+                for span in range(PAIR, self.spans(row - 1) + 1):
                     if column >= span:
                         reached = score[row - 1][column - span]
                         best = max(best, reached + self.joined_heard(row - 1, column - 1, span))
-                if row >= 2:
-                    best = max(best, score[row - 2][column - 1] + self.joined_expected(row - 1, column - 1))
-                if row >= 2 and column >= 2:
-                    best = max(best, score[row - 2][column - 2] + self.joined_pair(row - 1, column - 1))
+                if row >= PAIR:
+                    best = max(best, score[row - PAIR][column - 1] + self.joined_expected(row - 1, column - 1))
+                if row >= PAIR and column >= PAIR:
+                    best = max(best, score[row - PAIR][column - PAIR] + self.joined_pair(row - 1, column - 1))
                 score[row][column] = best
         return score
 
     def matches(self, score: list[list[float]]) -> list[WordMatch]:
-        gap = rules().gap_penalty
         found: list[WordMatch] = []
         row, column = len(self.expected), len(self.heard)
         while row > 0 and column > 0:
-            cell = score[row][column]
-
-            straight = self.straight(row - 1, column - 1)
-            if cell == score[row - 1][column - 1] + straight:
-                if straight >= self.threshold:
-                    found.append(WordMatch(range(row - 1, row), range(column - 1, column)))
-                row, column = row - 1, column - 1
-                continue
-
-            span = self.joined_span(score, cell, row, column)
-            if span is not None:
-                if self.joined_heard(row - 1, column - 1, span) >= self.join_threshold:
-                    found.append(WordMatch(range(row - 1, row), range(column - span, column)))
-                row, column = row - 1, column - span
-                continue
-
-            if row >= 2 and column >= 2 and cell == score[row - 2][column - 2] + self.joined_pair(row - 1, column - 1):
-                if self.joined_pair(row - 1, column - 1) >= self.join_threshold:
-                    found.append(WordMatch(range(row - 2, row), range(column - 2, column)))
-                row, column = row - 2, column - 2
-                continue
-
-            if row >= 2 and cell == score[row - 2][column - 1] + self.joined_expected(row - 1, column - 1):
-                if self.joined_expected(row - 1, column - 1) >= self.join_threshold:
-                    found.append(WordMatch(range(row - 2, row), range(column - 1, column)))
-                row, column = row - 2, column - 1
-                continue
-
-            if cell == score[row - 1][column] + gap:
-                row -= 1
-            else:
-                column -= 1
+            (rows_back, columns_back), made = self.step(score, row, column)
+            if made is not None:
+                found.append(made)
+            row, column = row - rows_back, column - columns_back
         found.reverse()
         return found
+
+    Step = tuple[tuple[int, int], WordMatch | None]
+
+    def step(self, score: list[list[float]], row: int, column: int) -> "Alignment.Step":
+        cell = score[row][column]
+
+        straight = self.straight(row - 1, column - 1)
+        if cell == score[row - 1][column - 1] + straight:
+            one = WordMatch(range(row - 1, row), range(column - 1, column))
+            return (1, 1), self.recorded(straight, self.threshold, one)
+
+        span = self.joined_span(score, cell, row, column)
+        if span is not None:
+            worth = self.joined_heard(row - 1, column - 1, span)
+            spread = WordMatch(range(row - 1, row), range(column - span, column))
+            return (1, span), self.recorded(worth, self.join_threshold, spread)
+
+        if row >= PAIR and column >= PAIR:
+            worth = self.joined_pair(row - 1, column - 1)
+            if cell == score[row - PAIR][column - PAIR] + worth:
+                both = WordMatch(range(row - PAIR, row), range(column - PAIR, column))
+                return (PAIR, PAIR), self.recorded(worth, self.join_threshold, both)
+
+        if row >= PAIR:
+            worth = self.joined_expected(row - 1, column - 1)
+            if cell == score[row - PAIR][column - 1] + worth:
+                written = WordMatch(range(row - PAIR, row), range(column - 1, column))
+                return (PAIR, 1), self.recorded(worth, self.join_threshold, written)
+
+        if cell == score[row - 1][column] + rules().gap_penalty:
+            return (1, 0), None
+        return (0, 1), None
+
+    def recorded(self, worth: float, bar: float, made: WordMatch) -> WordMatch | None:
+        return made if worth >= bar else None
 
     def joined_span(self, score: list[list[float]], cell: float, row: int, column: int) -> int | None:
         return next(
             (
                 span
-                for span in range(2, self.spans(row - 1) + 1)
+                for span in range(PAIR, self.spans(row - 1) + 1)
                 if column >= span
                 and cell == score[row - 1][column - span] + self.joined_heard(row - 1, column - 1, span)
             ),

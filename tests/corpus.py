@@ -1,5 +1,6 @@
+import itertools
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -10,7 +11,7 @@ TOLERANCE = 0.001
 
 
 class UnusableWeighting:
-    def weight(self, word: str) -> float:
+    def weight(self, _word: str) -> float:
         return float("nan")
 
 
@@ -21,7 +22,7 @@ WEIGHTINGS: dict[str, SpeechWeighting] = {
 }
 
 
-def load(name: str) -> Any:
+def load(name: str) -> dict:
     path = Path(__file__).parent / "cases" / name
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
@@ -60,11 +61,11 @@ def check_well_formed(spans: list[WordSpan], count: int, where: str) -> None:
     assert len(spans) == count, f"{where}: one span per word"
     for index, span in enumerate(spans):
         assert span.end >= span.start, f"{where}: word {index} ends before it starts"
-    for earlier, later in zip(spans, spans[1:], strict=False):
+    for earlier, later in itertools.pairwise(spans):
         assert later.start >= earlier.start - TOLERANCE, f"{where}: spans go backwards"
 
 
-def patch_from(case: dict):
+def patch_from(case: dict) -> Callable[[str, str, str | None], bool] | None:
     entries = case.get("equivalent")
     if not entries:
         return None

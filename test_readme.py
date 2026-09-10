@@ -11,5 +11,5 @@ BLOCKS = re.findall(
 
 
 @pytest.mark.parametrize("block", BLOCKS, ids=range(len(BLOCKS)))
-def test_readme_example_runs(block):
+def test_readme_example_runs(block: str) -> None:
     exec(block, {})

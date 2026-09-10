@@ -3,6 +3,8 @@ from typing import Protocol
 from .rules import rules
 from .words import letters as letter_clusters
 
+SHORTEST_WITH_A_SILENT_E = 3
+
 
 class SpeechWeighting(Protocol):
     def weight(self, word: str) -> float: ...
@@ -26,11 +28,12 @@ class EnglishSyllableWeighting:
                 count += 1
             previous_was_vowel = is_vowel
         spelled = "".join(clusters)
-        if len(clusters) > 2 and spelled.endswith("e") and not spelled.endswith("le") and count > 1:
+        long_enough = len(clusters) >= SHORTEST_WITH_A_SILENT_E
+        if long_enough and spelled.endswith("e") and not spelled.endswith("le") and count > 1:
             count -= 1
         return max(count, 1)
 
 
 class EvenWeighting:
-    def weight(self, word: str) -> float:
+    def weight(self, _word: str) -> float:
         return 1.0

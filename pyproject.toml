@@ -3,8 +3,23 @@ line-length = 120
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "I", "B", "C4", "UP"]
-ignore = ["E501"]
+select = ["ALL"]
+ignore = [
+    # A docstring on every function is a second place for a fact that already has
+    # one in the name and the structure, and it goes stale where the code does not.
+    "D100", "D101", "D102", "D103", "D104", "D107",
+    "D203", "D211", "D212", "D213",
+    # The licence is a file, not a line at the top of every source file.
+    "CPY001",
+    # Ruff's own formatter disagrees with it.
+    "COM812",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Assertions are how a test states what it holds, and executing a block of the
+# README is how the examples in it are checked.
+"tests/*" = ["S101", "PLR2004"]
+"test_readme.py" = ["S101", "S102"]
 
 [tool.ruff.format]
 quote-style = "double"

@@ -27,18 +27,28 @@ def rules() -> Rules:
     return read(yaml.safe_load(text))
 
 
+class RulesIncompleteError(ValueError):
+    def __init__(self, names: list[str]) -> None:
+        super().__init__("rules.yaml is missing " + ", ".join(names))
+
+
+class RuleNotANumberError(ValueError):
+    def __init__(self, name: str, value: object) -> None:
+        super().__init__(f"rules.yaml: {name} is not a number: {value!r}")
+
+
 def read(written: dict) -> Rules:
     wanted = {field.name: field.type for field in fields(Rules)}
     missing = sorted(set(wanted) - set(written))
     if missing:
-        raise ValueError(f"rules.yaml is missing {', '.join(missing)}")
+        raise RulesIncompleteError(missing)
     return Rules(**{name: as_declared(written[name], kind, name) for name, kind in wanted.items()})
 
 
 def as_declared(value: object, kind: object, name: str) -> object:
-    if kind is float:
-        try:
-            return float(value)
-        except (TypeError, ValueError) as wrong:
-            raise ValueError(f"rules.yaml: {name} is not a number: {value!r}") from wrong
-    return value
+    if kind is not float:
+        return value
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as wrong:
+        raise RuleNotANumberError(name, value) from wrong

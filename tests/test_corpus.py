@@ -1,3 +1,5 @@
+import itertools
+
 import pytest
 
 from readalign.aligner import align, fill, match, pair
@@ -17,13 +19,13 @@ from tests.corpus import (
 )
 
 
-def named(name):
+def named(name: str) -> pytest.MarkDecorator:
     found = cases(name)
     return pytest.mark.parametrize("case", found, ids=[case["name"] for case in found])
 
 
 @named("align_tests.yaml")
-def test_aligns_as_the_corpus_says(case):
+def test_aligns_as_the_corpus_says(case: dict) -> None:
     name = case["name"]
     assert asserts_something(case, "want", "want_empty", "strictly_increasing"), f"{name}: asserts nothing"
 
@@ -46,7 +48,7 @@ def test_aligns_as_the_corpus_says(case):
 
 
 @named("match_tests.yaml")
-def test_places_words_as_the_corpus_says(case):
+def test_places_words_as_the_corpus_says(case: dict) -> None:
     name = case["name"]
     assert asserts_something(case, "want", "contiguous"), f"{name}: asserts nothing"
 
@@ -66,7 +68,7 @@ def test_places_words_as_the_corpus_says(case):
 
 
 @named("fill_tests.yaml")
-def test_fills_as_the_corpus_says(case):
+def test_fills_as_the_corpus_says(case: dict) -> None:
     name = case["name"]
     assert asserts_something(case, "want", "non_overlapping"), f"{name}: asserts nothing"
 
@@ -78,18 +80,18 @@ def test_fills_as_the_corpus_says(case):
         check_span(spans[expectation["word"]], expectation, name)
 
     if case.get("non_overlapping"):
-        for earlier, later in zip(spans, spans[1:], strict=False):
+        for earlier, later in itertools.pairwise(spans):
             assert later.start >= earlier.end - 0.001, f"{name}: two words claim the same instant"
 
 
 @named("pair_tests.yaml")
-def test_pairs_as_the_corpus_says(case):
+def test_pairs_as_the_corpus_says(case: dict) -> None:
     name = case["name"]
     assert asserts_something(case, "want", "want_absent"), f"{name}: asserts nothing"
 
     matches = pair(case["expected"], case["heard"], case["threshold"], patch_from(case))
 
-    def made(wanted) -> bool:
+    def made(wanted: dict) -> bool:
         return any(
             found.expected == range(*wanted["expected"]) and found.heard == range(*wanted["heard"]) for found in matches
         )
@@ -103,7 +105,7 @@ def test_pairs_as_the_corpus_says(case):
 
 
 @named("hold_tests.yaml")
-def test_holds_as_the_corpus_says(case):
+def test_holds_as_the_corpus_says(case: dict) -> None:
     name = case["name"]
     assert asserts_something(case, "want"), f"{name}: asserts nothing"
 
@@ -119,23 +121,23 @@ def test_holds_as_the_corpus_says(case):
         check_span(spans[expectation["word"]], expectation, name)
 
 
-def word_cases(section: str):
+def word_cases(section: str) -> pytest.MarkDecorator:
     found = load("word_tests.yaml")[section]
     return pytest.mark.parametrize("case", found, ids=[str(case) for case in found])
 
 
 @word_cases("printed_parts")
-def test_counts_printed_parts_as_the_corpus_says(case):
+def test_counts_printed_parts_as_the_corpus_says(case: dict) -> None:
     assert printed_parts(case["word"]) == case["parts"], case["word"]
 
 
 @word_cases("normalize")
-def test_normalizes_as_the_corpus_says(case):
+def test_normalizes_as_the_corpus_says(case: dict) -> None:
     assert normalize(case["word"]) == case["want"]
 
 
 @word_cases("similarity")
-def test_scores_likeness_as_the_corpus_says(case):
+def test_scores_likeness_as_the_corpus_says(case: dict) -> None:
     score = similarity(case["left"], case["right"])
     if "equals" in case:
         assert abs(score - case["equals"]) < 0.001
@@ -146,7 +148,7 @@ def test_scores_likeness_as_the_corpus_says(case):
 
 
 @word_cases("english_syllables")
-def test_counts_english_syllables_as_the_corpus_says(case):
+def test_counts_english_syllables_as_the_corpus_says(case: dict) -> None:
     counted = EnglishSyllableWeighting().syllable_count(case["word"])
     if "count" in case:
         assert counted == case["count"], case["word"]
