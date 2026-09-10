@@ -1,0 +1,49 @@
+# The numbers the alignment is tuned to. Shared by every port of this library, so
+# that changing one changes all of them rather than leaving them quietly apart.
+#
+# What each is for is written up in the README, under "How it works".
+
+# How alike two words must be to count as the same word.
+match_threshold: 0.6
+
+# A join is held to at least this, however low the match bar is set: loosely,
+# joining swallows the neighbouring word whole.
+join_floor: 0.9
+
+# Passing a word over, on either side.
+gap_penalty: -0.5
+
+# A pairing below its bar. Only its being worse than two gaps matters.
+mismatch_penalty: -1.5
+
+# Shorter than this and a word has no stretch of the recording to be found at.
+room_enough: 0.04
+
+# Letters that open a syllable for the English weighting.
+english_vowels: "aeiouy"
+
+# Likeness is measured with the marks taken off, because a recogniser trained on
+# plain Latin returns "casa" for "čaša" and the word is still the word. Unicode
+# takes off a mark that sits above a letter; these carry theirs through the letter
+# itself, so it has nothing to lift and they are listed instead.
+folded_letters:
+  "ł": "l"
+  "đ": "d"
+  "ø": "o"
+  "ħ": "h"
+  "ŧ": "t"
+
+# Holding a word open through the silence after it, which needs the recording.
+# Short enough to find the edge of a consonant, long enough that one loud sample
+# cannot pass for speech.
+frame_seconds: 0.01
+
+# Louder than the room, quieter than a voice. Taken from the recording rather than
+# fixed, because one reader is recorded hotter than another: the quietest tenth of
+# the frames is the room, and speech is what stands well clear of it.
+room_quantile: 0.1
+speech_above_room: 4
+quietest_room: 0.0001
+
+# How far past its own mark a word may be held.
+hold_limit: 0.6
