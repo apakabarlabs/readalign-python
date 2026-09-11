@@ -23,21 +23,23 @@ def align(
     heard: list[RecognizedWord],
     duration: float,
     weighting: SpeechWeighting | None = None,
+    equivalent: Equivalent | None = None,
 ) -> list[WordSpan]:
     if not expected or not heard:
         return []
     weighting = weighting or EnglishSyllableWeighting()
-    return fill(expected, match(expected, heard, weighting), duration, weighting)
+    return fill(expected, match(expected, heard, weighting, equivalent), duration, weighting)
 
 
 def match(
     expected: list[str],
     heard: list[RecognizedWord],
     weighting: SpeechWeighting | None = None,
+    equivalent: Equivalent | None = None,
 ) -> dict[int, RecognizedWord]:
     weighting = weighting or EnglishSyllableWeighting()
     placed: dict[int, RecognizedWord] = {}
-    for found in pair(expected, [word.text for word in heard], rules().match_threshold):
+    for found in pair(expected, [word.text for word in heard], rules().match_threshold, equivalent):
         start = heard[found.heard.start].start
         end = heard[found.heard.stop - 1].end
         said = heard[found.heard.start].text

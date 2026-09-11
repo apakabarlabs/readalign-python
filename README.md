@@ -67,7 +67,7 @@ assert any(m.expected == range(1, 3) and m.heard == range(1, 3) for m in matches
 
 ### Recogniser patches
 
-`pair` takes an optional `equivalent`, called as `(written, heard, the written word before it)`. It is for pairs a particular recogniser reliably gets wrong in a way likeness cannot carry, and it is asked with either side joined up as well.
+`pair` and `align` both take an optional `equivalent`, called as `(written, heard, the written word before it)`. It is for pairs a particular recogniser reliably gets wrong in a way likeness cannot carry, and it is asked with either side joined up as well. Homophones are the common case: read aloud, `queue` comes back written `cue` and `rustle` comes back `Russell`, and those readings are good however little the spellings share.
 
 ```python
 from readalign import pair

@@ -31,7 +31,13 @@ def test_aligns_as_the_corpus_says(case: dict) -> None:
     name = case["name"]
     assert asserts_something(case, "want", "want_empty", "strictly_increasing"), f"{name}: asserts nothing"
 
-    spans = align(case["expected"], heard_words(case), case["duration"], weighting_for(case))
+    spans = align(
+        case["expected"],
+        heard_words(case),
+        case["duration"],
+        weighting_for(case),
+        patch_from(case),
+    )
 
     if case.get("want_empty"):
         assert spans == [], f"{name}: nothing rather than a guess"
