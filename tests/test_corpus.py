@@ -6,7 +6,7 @@ from readalign.aligner import align, fill, match, pair
 from readalign.rules import rules
 from readalign.silence import energy_frames, held, speech_level
 from readalign.weighting import EnglishSyllableWeighting
-from readalign.words import RecognizedWord, WordSpan, normalize, printed_parts, similarity
+from readalign.words import RecognizedWord, WordSpan, letters, normalize, printed_parts, similarity
 from tests.corpus import (
     TOLERANCE,
     asserts_something,
@@ -150,6 +150,11 @@ def word_cases(section: str) -> pytest.MarkDecorator:
 @word_cases("printed_parts")
 def test_counts_printed_parts_as_the_corpus_says(case: dict) -> None:
     assert printed_parts(case["word"]) == case["parts"], case["word"]
+
+
+@word_cases("letters")
+def test_cuts_a_word_into_letters_as_the_corpus_says(case: dict) -> None:
+    assert letters(case["word"]) == case["want"], case["word"]
 
 
 @word_cases("normalize")
