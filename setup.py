@@ -4,10 +4,10 @@ from setuptools import setup
 
 setup(
     name="readalign",
-    version="0.4.0",
+    version="0.5.0",
     packages=["readalign"],
     package_data={"readalign": ["rules.yaml"]},
-    install_requires=["PyYAML>=6.0.3", "regex>=2026.1.15"],
+    install_requires=["PyYAML>=6.0.3"],
     python_requires=">=3.10",
     author="Apakabarlabs",
     description="Lines a speech recogniser's output up against the text that was read",

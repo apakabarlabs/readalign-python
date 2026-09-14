@@ -20,6 +20,7 @@ class Rules:
     lightest_word: float
     lifted_marks_from: str
     lifted_marks_to: str
+    letter_joiners: list[str]
     folded_letters: dict[str, str]
     frame_seconds: float
     room_quantile: float
@@ -28,6 +29,10 @@ class Rules:
     hold_limit: float
     speech_from_loudest_share: float
     quietest_speech: float
+
+    def joins(self, character: str) -> bool:
+        """Whether this mark writes one consonant joined to the next, making them one letter."""
+        return any(int(code, 16) == ord(character) for code in self.letter_joiners)
 
     def lifts(self, character: str) -> bool:
         return int(self.lifted_marks_from, 16) <= ord(character) <= int(self.lifted_marks_to, 16)

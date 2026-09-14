@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0
+
+Nothing you call has to change, and one dependency goes away.
+
+### Changed
+- Where a word is cut into letters is now decided by the rules this library shares rather than by the `regex` module, and `regex` is no longer a dependency. Every platform answers that question differently and at a different vintage, which is not something a library whose three ports must read one word can leave to whoever is running it. The marks that join one consonant to the next are named in `rules.yaml`, and the letters of eleven writing systems are pinned letter by letter in the cases.
+- A sigma ending a Greek word is written its own way. Python already did this; the library this one is a port of did not, so the two disagreed about whether a Greek word had been read at all.
+
+### Removed
+- `regex`. `pip install` pulls one package fewer.
+
 ## 0.4.0
 
 Nothing you call has to change. A token that is only a mark now normalises to nothing, so what comes back changes where such a token appears.
