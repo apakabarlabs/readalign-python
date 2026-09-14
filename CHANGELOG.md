@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+Nothing you call has to change. A token that is only a mark now normalises to nothing, so what comes back changes where such a token appears.
+
+### Fixed
+- A mark that is only ever written above or beside a letter is no longer a word in its own right, matching what this library documents a stray mark to do: it is passed over rather than joined onto the word beside it, which used to take that word's stretch of the recording with it. A mark attached to its letter is unaffected.
+- The test that holds the shared files against the library this one is a port of no longer skips itself. It used to compare against a checkout beside this one, which on a build server never exists, so the check passed without running; it now reads those files from that repository and fails without a network, as any test wanting an absent resource should.
+
+### Added
+- There is now a Kotlin port as well, and the shared cases pin where a language's letters are cut apart: a word carrying a zero-width joiner and a word carrying a spacing mark each have a case of their own.
+
 ## 0.3.0
 
 Nothing you call has to change. What comes back changes wherever accents are involved, on either side — see Fixed.
