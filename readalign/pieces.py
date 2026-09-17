@@ -46,7 +46,7 @@ def pauses(samples: Sequence[float], sample_rate: float) -> list[int]:
 
 
 def cuts(samples: Sequence[float], sample_rate: float) -> list[tuple[int, int]]:
-    """The pieces the recording is asked in, in samples, each overlapping the one before.
+    """Cut the recording into the pieces it is asked in, each overlapping the one before.
 
     A piece ends at the last pause that leaves it long enough to carry a line and short
     enough for the runtime to take whole; where no pause falls there, it ends on length

@@ -209,7 +209,7 @@ def test_leaves_no_sample_out_of_every_piece(case: dict) -> None:
 
     assert pieces[0][0] == 0, f"{case['name']}: starts at {pieces[0][0]}"
     assert pieces[-1][1] == len(samples), f"{case['name']}: ends short"
-    for earlier, later in zip(pieces, pieces[1:]):
+    for earlier, later in itertools.pairwise(pieces):
         # Overlap where a pause allows it, but never a gap: a sample no piece holds is a
         # word no recogniser is ever asked about.
         assert later[0] <= earlier[1], f"{case['name']}: a gap between pieces"
