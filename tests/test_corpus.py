@@ -3,6 +3,7 @@ import itertools
 import pytest
 
 from readalign.aligner import align, fill, match, pair
+from readalign.pieces import cuts, pauses
 from readalign.rules import rules
 from readalign.silence import energy_frames, held, speech_level
 from readalign.weighting import EnglishSyllableWeighting
@@ -180,3 +181,36 @@ def test_counts_english_syllables_as_the_corpus_says(case: dict) -> None:
         assert counted == case["count"], case["word"]
     if "at_least" in case:
         assert counted >= case["at_least"], case["word"]
+
+
+PAUSE_CASES = load("piece_tests.yaml")["pauses"]
+CUT_CASES = load("piece_tests.yaml")["cuts"]
+
+
+@pytest.mark.parametrize("case", PAUSE_CASES, ids=[case["name"] for case in PAUSE_CASES])
+def test_finds_the_pauses_the_corpus_names(case: dict) -> None:
+    found = pauses(waveform_of(case), case["sample_rate"])
+
+    assert found == case["equals"], f"{case['name']}: {found}"
+
+
+@pytest.mark.parametrize("case", CUT_CASES, ids=[case["name"] for case in CUT_CASES])
+def test_cuts_where_the_corpus_says(case: dict) -> None:
+    pieces = cuts(waveform_of(case), case["sample_rate"])
+
+    assert pieces == [tuple(piece) for piece in case["equals"]], f"{case['name']}: {pieces}"
+
+
+@pytest.mark.parametrize("case", CUT_CASES, ids=[case["name"] for case in CUT_CASES])
+def test_leaves_no_sample_out_of_every_piece(case: dict) -> None:
+    samples = waveform_of(case)
+
+    pieces = cuts(samples, case["sample_rate"])
+
+    assert pieces[0][0] == 0, f"{case['name']}: starts at {pieces[0][0]}"
+    assert pieces[-1][1] == len(samples), f"{case['name']}: ends short"
+    for earlier, later in zip(pieces, pieces[1:]):
+        # Overlap where a pause allows it, but never a gap: a sample no piece holds is a
+        # word no recogniser is ever asked about.
+        assert later[0] <= earlier[1], f"{case['name']}: a gap between pieces"
+        assert later[0] > earlier[0], f"{case['name']}: a piece that goes nowhere"

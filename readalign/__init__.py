@@ -1,5 +1,6 @@
 from .aligner import align, pair
 from .alignment import Equivalent
+from .pieces import cuts, pauses
 from .rules import rules
 from .silence import energy_frames, held, speech_level, speech_threshold
 from .weighting import EnglishSyllableWeighting, EvenWeighting, SpeechWeighting
@@ -15,9 +16,11 @@ __all__ = [
     "WordMatch",
     "WordSpan",
     "align",
+    "cuts",
     "energy_frames",
     "fold",
     "held",
+    "pauses",
     "normalize",
     "pair",
     "printed_parts",

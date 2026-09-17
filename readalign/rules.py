@@ -29,6 +29,10 @@ class Rules:
     hold_limit: float
     speech_from_loudest_share: float
     quietest_speech: float
+    piece_seconds: float
+    shortest_piece_share: float
+    pause_seconds: float
+    same_moment: float
 
     def joins(self, character: str) -> bool:
         """Whether this mark writes one consonant joined to the next, making them one letter."""
