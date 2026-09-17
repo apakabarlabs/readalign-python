@@ -1,6 +1,6 @@
 SWIFT_DIR = ../readalign-swift
 
-.PHONY: install build test-build test lint format clean sync-yaml
+.PHONY: install build test-build test lint format clean sync-yaml docs
 
 clean:
 	rm -rf build dist *.egg-info .pytest_cache .ruff_cache
@@ -31,3 +31,6 @@ format:
 sync-yaml:
 	cp $(SWIFT_DIR)/Sources/ReadAlign/Resources/rules.yaml readalign/rules.yaml
 	cp $(SWIFT_DIR)/Tests/ReadAlignTests/Resources/*.yaml tests/cases/
+
+docs:
+	venv/bin/pdoc readalign -o build/docs

@@ -1,4 +1,5 @@
 [![Tests](https://github.com/apakabarlabs/readalign-python/actions/workflows/tests.yml/badge.svg)](https://github.com/apakabarlabs/readalign-python/actions/workflows/tests.yml)
+[![Documentation](https://github.com/apakabarlabs/readalign-python/actions/workflows/documentation.yml/badge.svg)](https://apakabarlabs.github.io/readalign-python/readalign.html)
 # readalign-python
 
 Lines a speech recogniser's output up against the text that was read, and says when each word of that text was spoken.
@@ -133,8 +134,14 @@ The API at 0.5.0 is not settled and may change without a major version.
 make install
 make test
 make lint
+make docs        # the API reference, into build/docs
 make sync-yaml   # after the rules or the cases change in readalign-swift
 ```
+
+## Documentation
+
+The [API reference](https://apakabarlabs.github.io/readalign-python/readalign.html)
+is generated from the public API on every push to `main`.
 
 ## Lines of Code
 

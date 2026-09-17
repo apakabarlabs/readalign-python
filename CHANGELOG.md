@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.0
+
+Nothing you call has to change. There is a new call for anyone who hands a long recording to a speech recogniser.
+
+### Added
+- `cuts` says where to cut a recording into the pieces a recogniser is asked one at a time, and `pauses` says where it is quiet long enough to cut. A recogniser handed a long reading cuts it into windows of its own, and every runtime cuts differently: one took fifteen-second windows and dropped the last line of a forty-second reading, while another was handed the same reading whole. Cut it here first and every side is asked the same question.
+- Four numbers in `rules.yaml` decide it: how long a piece may be, the earliest it may end, how long quiet has to last to count as a pause, and how close two marks of one word have to be for the overlap to say it once.
+- An API reference, generated on every push and linked from the README.
+
+### Fixed
+- The version the package reports is the version it is released under. It said 0.3.0 while the package was 0.5.0, so anyone asking the library which version they had was told the wrong one.
+
+### Notes
+- A reading with hardly any silence in it is cut on length alone. Quiet is measured against the quietest tenth of the recording itself, so where that tenth is already speech, no pause stands out from it.
+
 ## 0.5.0
 
 Nothing you call has to change, and one dependency goes away.
