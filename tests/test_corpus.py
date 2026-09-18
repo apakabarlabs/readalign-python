@@ -8,7 +8,7 @@ from readalign.pieces import UnevenPiecesError, cuts, heard, joined, pauses
 from readalign.rules import rules
 from readalign.silence import energy_frames, held, speech_level
 from readalign.weighting import EnglishSyllableWeighting
-from readalign.words import RecognizedWord, WordSpan, letters, normalize, printed_parts, similarity
+from readalign.words import RecognizedWord, WordSpan, letters, normalize, printed_parts, similarity, spoken
 from tests.corpus import (
     TOLERANCE,
     asserts_something,
@@ -157,6 +157,16 @@ def test_counts_printed_parts_as_the_corpus_says(case: dict) -> None:
 @word_cases("letters")
 def test_cuts_a_word_into_letters_as_the_corpus_says(case: dict) -> None:
     assert letters(case["word"]) == case["want"], case["word"]
+
+
+@word_cases("spoken")
+def test_gathers_tokens_into_the_words_the_corpus_names(case: dict) -> None:
+    tokens = [RecognizedWord(token["text"], token["start"], token["end"]) for token in case["tokens"]]
+    said = spoken(tokens)
+
+    assert said == [RecognizedWord(word["text"], word["start"], word["end"]) for word in case["equals"]], (
+        f"{case['name']}: {said}"
+    )
 
 
 @word_cases("normalize")

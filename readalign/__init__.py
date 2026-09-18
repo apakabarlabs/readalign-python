@@ -4,9 +4,9 @@ from .pieces import UnevenPiecesError, cuts, heard, joined, pauses
 from .rules import rules
 from .silence import energy_frames, held, speech_level, speech_threshold
 from .weighting import EnglishSyllableWeighting, EvenWeighting, SpeechWeighting
-from .words import RecognizedWord, WordMatch, WordSpan, fold, normalize, printed_parts
+from .words import RecognizedWord, WordMatch, WordSpan, fold, normalize, printed_parts, spoken
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 __all__ = [
     "EnglishSyllableWeighting",
     "Equivalent",
@@ -30,4 +30,5 @@ __all__ = [
     "rules",
     "speech_level",
     "speech_threshold",
+    "spoken",
 ]
