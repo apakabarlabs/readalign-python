@@ -8,6 +8,7 @@ the cut is made here, by rule, before any of them is asked.
 """
 
 from collections.abc import Callable, Sequence
+from itertools import dropwhile, takewhile
 
 from .rules import rules
 from .silence import energy_frames, speech_threshold
@@ -89,9 +90,10 @@ def joined(
     """One reading out of what each piece came back with.
 
     The pieces overlap, so the words at a seam arrive twice, and the second copy is
-    dropped by the text: the longest run of words the piece before already said is taken
-    off the front of the one coming. Placed where it falls in the whole recording, so a
-    caller hands over what it was given piece by piece and gets the reading back.
+    dropped by the text: the longest run the two pieces say alike inside the overlap is
+    found, and everything the coming piece says up to the end of it comes off. Placed
+    where it falls in the whole recording, so a caller hands over what it was given piece
+    by piece and gets the reading back.
 
     By the text and not by the clock, because the clock is the one thing two builds of one
     model do not share: the same word decoded in two pieces comes back a fifth of a second
@@ -111,7 +113,7 @@ def joined(
     for words, (start, end) in zip(heard, pieces, strict=True):
         offset = start / sample_rate
         placed = [RecognizedWord(text=word.text, start=word.start + offset, end=word.end + offset) for word in words]
-        reading += placed[_said_already(reading, placed, covered_to) :]
+        reading += placed[_said_already(reading, placed, offset, covered_to) :]
         covered_to = end / sample_rate
     return reading
 
@@ -119,6 +121,7 @@ def joined(
 def _said_already(
     kept: Sequence[RecognizedWord],
     coming: Sequence[RecognizedWord],
+    overlap_from: float,
     covered_to: float,
 ) -> int:
     """How many of the coming piece's first words the piece before it has already said.
@@ -126,22 +129,32 @@ def _said_already(
     Only the words that fall in the ground both pieces cover can be a second copy, so the
     search stops where the piece before ended: a word the reading genuinely says twice,
     further along, is out of reach of this and stays.
+
+    The run is the longest the two say alike, found anywhere inside the overlap rather
+    than at its edges: a recogniser drops or invents a word at the edge of what it was
+    given -- one piece ended "...by time decease we" where the other heard no "we" -- and
+    a run pinned to the edges would find nothing and leave the whole overlap said twice.
+    A run of one word is taken only when it is the whole of what the coming piece says in
+    the overlap, or a word as common as "the" would pair with itself by chance.
     """
-    in_the_overlap = 0
-    for word in coming:
-        if word.start >= covered_to:
-            break
-        in_the_overlap += 1
-    reach = min(in_the_overlap, len(kept))
-    said = 0
-    for length in range(1, reach + 1):
-        alike = all(
-            normalize(earlier.text) == normalize(later.text)
-            for earlier, later in zip(kept[len(kept) - length :], coming[:length], strict=True)
-        )
-        if alike:
-            said = length
-    return said
+    tail = [normalize(word.text) for word in dropwhile(lambda word: word.start < overlap_from, kept)]
+    head = [normalize(word.text) for word in takewhile(lambda word: word.start < covered_to, coming)]
+    if not tail or not head:
+        return 0
+
+    longest = 0
+    ends_at = 0
+    for first in range(len(tail)):
+        for second in range(len(head)):
+            run = 0
+            while first + run < len(tail) and second + run < len(head) and tail[first + run] == head[second + run]:
+                run += 1
+            if run > longest:
+                longest = run
+                ends_at = second + run
+    if longest > 1 or longest == len(head):
+        return ends_at
+    return 0
 
 
 def heard(
