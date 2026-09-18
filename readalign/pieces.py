@@ -89,9 +89,15 @@ def joined(
     """One reading out of what each piece came back with.
 
     The pieces overlap, so the words at a seam arrive twice, and the second copy is
-    dropped by time and text together: the same word marked within `same_moment` of one
-    already kept is one word. Placed where it falls in the whole recording, so a caller
-    hands over what it was given piece by piece and gets the reading back.
+    dropped by the text: the longest run of words the piece before already said is taken
+    off the front of the one coming. Placed where it falls in the whole recording, so a
+    caller hands over what it was given piece by piece and gets the reading back.
+
+    By the text and not by the clock, because the clock is the one thing two builds of one
+    model do not share: the same word decoded in two pieces comes back a fifth of a second
+    apart on one runtime and differently again on the next, so a rule that asks how close
+    two marks are decides differently on each of them. The words agree where the marks do
+    not.
 
     A piece the recogniser had nothing to say about is an answer, not a failure: a
     stretch of silence is transcribed as no words at all. A count of transcripts that
@@ -101,17 +107,41 @@ def joined(
     if len(heard) != len(pieces):
         raise UnevenPiecesError(len(heard), len(pieces))
     reading: list[RecognizedWord] = []
-    for words, (start, _end) in zip(heard, pieces, strict=True):
+    covered_to = 0.0
+    for words, (start, end) in zip(heard, pieces, strict=True):
         offset = start / sample_rate
-        for word in words:
-            placed = RecognizedWord(
-                text=word.text,
-                start=word.start + offset,
-                end=word.end + offset,
-            )
-            if not any(_same_word(kept, placed) for kept in reading):
-                reading.append(placed)
+        placed = [RecognizedWord(text=word.text, start=word.start + offset, end=word.end + offset) for word in words]
+        reading += placed[_said_already(reading, placed, covered_to) :]
+        covered_to = end / sample_rate
     return reading
+
+
+def _said_already(
+    kept: Sequence[RecognizedWord],
+    coming: Sequence[RecognizedWord],
+    covered_to: float,
+) -> int:
+    """How many of the coming piece's first words the piece before it has already said.
+
+    Only the words that fall in the ground both pieces cover can be a second copy, so the
+    search stops where the piece before ended: a word the reading genuinely says twice,
+    further along, is out of reach of this and stays.
+    """
+    in_the_overlap = 0
+    for word in coming:
+        if word.start >= covered_to:
+            break
+        in_the_overlap += 1
+    reach = min(in_the_overlap, len(kept))
+    said = 0
+    for length in range(1, reach + 1):
+        alike = all(
+            normalize(earlier.text) == normalize(later.text)
+            for earlier, later in zip(kept[len(kept) - length :], coming[:length], strict=True)
+        )
+        if alike:
+            said = length
+    return said
 
 
 def heard(
@@ -143,7 +173,3 @@ def heard(
         if again:
             return again
     return words
-
-
-def _same_word(kept: RecognizedWord, word: RecognizedWord) -> bool:
-    return abs(kept.start - word.start) < rules().same_moment and normalize(kept.text) == normalize(word.text)
