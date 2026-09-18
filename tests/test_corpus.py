@@ -3,7 +3,7 @@ import itertools
 import pytest
 
 from readalign.aligner import align, fill, match, pair
-from readalign.pieces import cuts, pauses
+from readalign.pieces import UnevenPiecesError, cuts, joined, pauses
 from readalign.rules import rules
 from readalign.silence import energy_frames, held, speech_level
 from readalign.weighting import EnglishSyllableWeighting
@@ -214,3 +214,30 @@ def test_leaves_no_sample_out_of_every_piece(case: dict) -> None:
         # word no recogniser is ever asked about.
         assert later[0] <= earlier[1], f"{case['name']}: a gap between pieces"
         assert later[0] > earlier[0], f"{case['name']}: a piece that goes nowhere"
+
+
+JOIN_CASES = load("piece_tests.yaml")["joins"]
+JOIN_REFUSALS = load("piece_tests.yaml")["join_refusals"]
+
+
+def transcripts_of(case: dict) -> list[list[RecognizedWord]]:
+    return [[RecognizedWord(word["text"], word["start"], word["end"]) for word in piece] for piece in case["heard"]]
+
+
+def pieces_of(case: dict) -> list[tuple[int, int]]:
+    return [tuple(piece) for piece in case["pieces"]]
+
+
+@pytest.mark.parametrize("case", JOIN_CASES, ids=[case["name"] for case in JOIN_CASES])
+def test_joins_the_pieces_into_the_reading_the_corpus_names(case: dict) -> None:
+    reading = joined(transcripts_of(case), pieces_of(case), case["sample_rate"])
+
+    assert reading == [RecognizedWord(word["text"], word["start"], word["end"]) for word in case["equals"]], (
+        f"{case['name']}: {reading}"
+    )
+
+
+@pytest.mark.parametrize("case", JOIN_REFUSALS, ids=[case["name"] for case in JOIN_REFUSALS])
+def test_refuses_a_piece_and_its_transcript_that_do_not_pair_off(case: dict) -> None:
+    with pytest.raises(UnevenPiecesError):
+        joined(transcripts_of(case), pieces_of(case), case["sample_rate"])

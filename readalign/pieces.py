@@ -11,6 +11,12 @@ from collections.abc import Sequence
 
 from .rules import rules
 from .silence import energy_frames, speech_threshold
+from .words import RecognizedWord, normalize
+
+
+class UnevenPiecesError(ValueError):
+    def __init__(self, heard: int, pieces: int) -> None:
+        super().__init__(f"{heard} transcripts for {pieces} pieces")
 
 
 def pauses(samples: Sequence[float], sample_rate: float) -> list[int]:
@@ -73,3 +79,40 @@ def cuts(samples: Sequence[float], sample_rate: float) -> list[tuple[int, int]]:
         start = back[-1] if back else cut
     pieces.append((start, len(samples)))
     return pieces
+
+
+def joined(
+    heard: Sequence[Sequence[RecognizedWord]],
+    pieces: Sequence[tuple[int, int]],
+    sample_rate: float,
+) -> list[RecognizedWord]:
+    """One reading out of what each piece came back with.
+
+    The pieces overlap, so the words at a seam arrive twice, and the second copy is
+    dropped by time and text together: the same word marked within `same_moment` of one
+    already kept is one word. Placed where it falls in the whole recording, so a caller
+    hands over what it was given piece by piece and gets the reading back.
+
+    A piece the recogniser had nothing to say about is an answer, not a failure: a
+    stretch of silence is transcribed as no words at all. A count of transcripts that
+    does not match the count of pieces is a failure, and is refused rather than quietly
+    paired off until the shorter of the two runs out.
+    """
+    if len(heard) != len(pieces):
+        raise UnevenPiecesError(len(heard), len(pieces))
+    reading: list[RecognizedWord] = []
+    for words, (start, _end) in zip(heard, pieces, strict=True):
+        offset = start / sample_rate
+        for word in words:
+            placed = RecognizedWord(
+                text=word.text,
+                start=word.start + offset,
+                end=word.end + offset,
+            )
+            if not any(_same_word(kept, placed) for kept in reading):
+                reading.append(placed)
+    return reading
+
+
+def _same_word(kept: RecognizedWord, word: RecognizedWord) -> bool:
+    return abs(kept.start - word.start) < rules().same_moment and normalize(kept.text) == normalize(word.text)
