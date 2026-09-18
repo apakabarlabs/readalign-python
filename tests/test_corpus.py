@@ -1,9 +1,10 @@
 import itertools
+from collections.abc import Callable, Sequence
 
 import pytest
 
 from readalign.aligner import align, fill, match, pair
-from readalign.pieces import UnevenPiecesError, cuts, joined, pauses
+from readalign.pieces import UnevenPiecesError, cuts, heard, joined, pauses
 from readalign.rules import rules
 from readalign.silence import energy_frames, held, speech_level
 from readalign.weighting import EnglishSyllableWeighting
@@ -241,3 +242,68 @@ def test_joins_the_pieces_into_the_reading_the_corpus_names(case: dict) -> None:
 def test_refuses_a_piece_and_its_transcript_that_do_not_pair_off(case: dict) -> None:
     with pytest.raises(UnevenPiecesError):
         joined(transcripts_of(case), pieces_of(case), case["sample_rate"])
+
+
+SAMPLE_RATE = 16_000
+ONE_WORD = [RecognizedWord("heard", 0.0, 1.0)]
+
+
+Recogniser = Callable[[Sequence[float]], list[RecognizedWord]]
+
+
+def silent_until_trimmed_by(seconds: float, of_length: int, asked: list[int]) -> Recogniser:
+    """Answer with one word once the piece given is short enough, and with nothing until then."""
+    speaks = of_length - int(seconds * SAMPLE_RATE)
+
+    def recognise(piece: Sequence[float]) -> list[RecognizedWord]:
+        asked.append(len(piece))
+        return ONE_WORD if len(piece) <= speaks else []
+
+    return recognise
+
+
+def says_nothing(asked: list[int]) -> Recogniser:
+    def recognise(piece: Sequence[float]) -> list[RecognizedWord]:
+        asked.append(len(piece))
+        return []
+
+    return recognise
+
+
+def test_asks_once_when_the_first_answer_has_words_in_it() -> None:
+    piece = [0.1] * (10 * SAMPLE_RATE)
+    asked: list[int] = []
+
+    words = heard(piece, SAMPLE_RATE, silent_until_trimmed_by(0.0, len(piece), asked))
+
+    assert words == ONE_WORD
+    assert asked == [len(piece)]
+
+
+def test_asks_again_with_less_of_the_tail_until_something_comes_back() -> None:
+    piece = [0.1] * (10 * SAMPLE_RATE)
+    asked: list[int] = []
+
+    words = heard(piece, SAMPLE_RATE, silent_until_trimmed_by(0.3, len(piece), asked))
+
+    assert words == ONE_WORD
+    # The whole piece, then one trim at a time until the third of them answers.
+    assert asked == [len(piece), len(piece) - 1600, len(piece) - 3200, len(piece) - 4800]
+
+
+def test_leaves_a_piece_too_short_to_expect_words_from_asked_only_once() -> None:
+    asked: list[int] = []
+
+    words = heard([0.1] * SAMPLE_RATE, SAMPLE_RATE, says_nothing(asked))
+
+    assert words == []
+    assert len(asked) == 1
+
+
+def test_answers_nothing_when_no_trim_brings_words_back() -> None:
+    asked: list[int] = []
+
+    words = heard([0.1] * (10 * SAMPLE_RATE), SAMPLE_RATE, says_nothing(asked))
+
+    assert words == []
+    assert len(asked) == 1 + len(rules().ask_again_trims)

@@ -1,12 +1,12 @@
 from .aligner import align, pair
 from .alignment import Equivalent
-from .pieces import UnevenPiecesError, cuts, joined, pauses
+from .pieces import UnevenPiecesError, cuts, heard, joined, pauses
 from .rules import rules
 from .silence import energy_frames, held, speech_level, speech_threshold
 from .weighting import EnglishSyllableWeighting, EvenWeighting, SpeechWeighting
 from .words import RecognizedWord, WordMatch, WordSpan, fold, normalize, printed_parts
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 __all__ = [
     "EnglishSyllableWeighting",
     "Equivalent",
@@ -20,6 +20,7 @@ __all__ = [
     "cuts",
     "energy_frames",
     "fold",
+    "heard",
     "held",
     "joined",
     "normalize",

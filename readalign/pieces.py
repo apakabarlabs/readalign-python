@@ -7,7 +7,7 @@ another is two different questions, and the answers cannot be held against each 
 the cut is made here, by rule, before any of them is asked.
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from .rules import rules
 from .silence import energy_frames, speech_threshold
@@ -112,6 +112,37 @@ def joined(
             if not any(_same_word(kept, placed) for kept in reading):
                 reading.append(placed)
     return reading
+
+
+def heard(
+    piece: Sequence[float],
+    sample_rate: float,
+    asking: Callable[[Sequence[float]], Sequence[RecognizedWord]],
+) -> list[RecognizedWord]:
+    """Ask the recogniser for one piece, and again with less of its tail while nothing comes.
+
+    Parakeet answers some pieces of ordinary speech with no words at all, and whether it
+    does turns on where the piece starts and how long it is together: the mel statistics
+    are taken over the piece, so its length moves them, and past some edge the decoder
+    predicts blank at every frame. Handing over a little less of the tail moves the piece
+    off that edge. Nothing here tells speech from silence, so a piece that is genuinely
+    silent pays for the whole list before answering nothing, which is why a piece shorter
+    than `shortest_worth_asking_again` is not asked again at all.
+
+    An answer won this way is missing whatever was said in the tail that was cut off. Each
+    piece the recording is cut into overlaps the next, and that overlap is what covers it.
+    """
+    words = list(asking(piece))
+    if words or len(piece) / sample_rate < rules().shortest_worth_asking_again:
+        return words
+    for trim in rules().ask_again_trims:
+        shorter = len(piece) - int(trim * sample_rate)
+        if shorter <= 0:
+            break
+        again = list(asking(piece[:shorter]))
+        if again:
+            return again
+    return words
 
 
 def _same_word(kept: RecognizedWord, word: RecognizedWord) -> bool:
