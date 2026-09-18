@@ -5,7 +5,7 @@
 Nothing you call has to change. If you cut a recording with `cuts` and stitched the answers back together yourself, that part is now a call.
 
 ### Added
-- `joined` turns what each piece came back with into one reading, placed in the seconds of the whole recording. The pieces overlap, so a word at a seam arrives twice, and the second copy goes by time and text together, on the `same_moment` number 0.6.0 already shipped. Left to each caller, this is where two sides that cut a reading identically still end up with different transcripts.
+- `joined` turns what each piece came back with into one reading, placed in the seconds of the whole recording. The pieces overlap, so a word at a seam arrives twice, and the second copy goes by time and text together, on `same_moment` in `rules.yaml`: how close two marks of one word have to be for the overlap to have said it once. Left to each caller, this is where two sides that cut a reading identically still end up with different transcripts.
 - A piece the recogniser had nothing to say about adds nothing, which is an answer rather than a fault. A transcript missing for a piece, or one too many, raises `UnevenPiecesError` rather than being paired off until the shorter of the two runs out: every word after the missing one would be placed at the wrong moment, and the reading would come back looking whole.
 
 ## 0.6.0
