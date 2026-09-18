@@ -59,12 +59,15 @@ def cuts(samples: Sequence[float], sample_rate: float) -> list[tuple[int, int]]:
     enough for the runtime to take whole; where no pause falls there, it ends on length
     alone, because a piece that grows to find a pause is the very window this avoids. The
     next piece begins one pause earlier than the last ended, so every word is heard whole
-    by at least one of them.
+    by at least one of them, and never less than `least_overlap` earlier: where no pause
+    offers itself the two pieces would otherwise meet edge to edge and share nothing, and a
+    word invented at the edge of one would have nothing to be caught against.
     """
     longest = int(rules().piece_seconds * sample_rate)
     if len(samples) <= longest or longest <= 0:
         return [(0, len(samples))]
     shortest = int(rules().piece_seconds * rules().shortest_piece_share * sample_rate)
+    least = int(rules().least_overlap * sample_rate)
     marks = pauses(samples, sample_rate)
 
     pieces = []
@@ -77,7 +80,8 @@ def cuts(samples: Sequence[float], sample_rate: float) -> list[tuple[int, int]]:
         # the words at the seam, and a pause near the start of this piece would hand the
         # next one almost the same range, over and over.
         back = [mark for mark in marks if start + shortest <= mark < cut]
-        start = back[-1] if back else cut
+        at_a_pause = back[-1] if back else cut
+        start = min(at_a_pause, max(start + shortest, cut - least))
     pieces.append((start, len(samples)))
     return pieces
 
