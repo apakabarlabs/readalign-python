@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.1
+
+- The distribution and module now both report the release version. The stale
+  distribution version could make pip retain older code when installing a newer Git
+  tag into an existing environment.
+
 ## 0.13.0
 
 ### Added
