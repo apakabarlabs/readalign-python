@@ -55,14 +55,19 @@ class Alignment:
         joined = "".join(parts)
         if self.vouched(self.expected[row], joined, self.preceding(row, 1)):
             return 1.0
+        if span > self.spans(row):
+            return float("-inf")
         return self.worth(similarity(self.expected[row], joined), self.join_threshold)
 
-    def joined_expected(self, row: int, column: int) -> float:
-        if not self.joinable(self.expected[row - 1 : row + 1]) or not self.heard[column]:
+    def joined_expected(self, row: int, column: int, span: int) -> float:
+        parts = self.expected[row - span + 1 : row + 1]
+        if not self.joinable(parts) or not self.heard[column]:
             return rules().mismatch_penalty
-        joined = self.expected[row - 1] + self.expected[row]
-        if self.vouched(joined, self.heard[column], self.preceding(row, 2)):
+        joined = "".join(parts)
+        if self.vouched(joined, self.heard[column], self.preceding(row, span)):
             return 1.0
+        if span > PAIR:
+            return float("-inf")
         return self.worth(similarity(joined, self.heard[column]), self.join_threshold)
 
     def joined_pair(self, row: int, column: int) -> float:
@@ -79,6 +84,9 @@ class Alignment:
     def spans(self, row: int) -> int:
         return max(rules().join_span, self.printed_parts[row])
 
+    def considered_spans(self, row: int) -> range:
+        return range(PAIR, max(self.spans(row), rules().vouched_join_span) + 1)
+
     def scores(self) -> list[list[float]]:
         gap = rules().gap_penalty
         rows, columns = len(self.expected), len(self.heard)
@@ -93,12 +101,15 @@ class Alignment:
                 best = score[row - 1][column - 1] + self.straight(row - 1, column - 1)
                 best = max(best, score[row - 1][column] + gap)
                 best = max(best, score[row][column - 1] + gap)
-                for span in range(PAIR, self.spans(row - 1) + 1):
+                for span in self.considered_spans(row - 1):
                     if column >= span:
                         reached = score[row - 1][column - span]
                         best = max(best, reached + self.joined_heard(row - 1, column - 1, span))
-                if row >= PAIR:
-                    best = max(best, score[row - PAIR][column - 1] + self.joined_expected(row - 1, column - 1))
+                for span in range(PAIR, min(row, rules().vouched_join_span) + 1):
+                    best = max(
+                        best,
+                        score[row - span][column - 1] + self.joined_expected(row - 1, column - 1, span),
+                    )
                 if row >= PAIR and column >= PAIR:
                     best = max(best, score[row - PAIR][column - PAIR] + self.joined_pair(row - 1, column - 1))
                 score[row][column] = best
@@ -137,11 +148,11 @@ class Alignment:
                 both = WordMatch(range(row - PAIR, row), range(column - PAIR, column))
                 return (PAIR, PAIR), self.recorded(worth, self.join_threshold, both)
 
-        if row >= PAIR:
-            worth = self.joined_expected(row - 1, column - 1)
-            if cell == score[row - PAIR][column - 1] + worth:
-                written = WordMatch(range(row - PAIR, row), range(column - 1, column))
-                return (PAIR, 1), self.recorded(worth, self.join_threshold, written)
+        span = self.joined_expected_span(score, cell, row, column)
+        if span is not None:
+            worth = self.joined_expected(row - 1, column - 1, span)
+            written = WordMatch(range(row - span, row), range(column - 1, column))
+            return (span, 1), self.recorded(worth, self.join_threshold, written)
 
         if cell == score[row - 1][column] + rules().gap_penalty:
             return (1, 0), None
@@ -154,9 +165,19 @@ class Alignment:
         return next(
             (
                 span
-                for span in range(PAIR, self.spans(row - 1) + 1)
+                for span in self.considered_spans(row - 1)
                 if column >= span
                 and cell == score[row - 1][column - span] + self.joined_heard(row - 1, column - 1, span)
+            ),
+            None,
+        )
+
+    def joined_expected_span(self, score: list[list[float]], cell: float, row: int, column: int) -> int | None:
+        return next(
+            (
+                span
+                for span in range(PAIR, min(row, rules().vouched_join_span) + 1)
+                if cell == score[row - span][column - 1] + self.joined_expected(row - 1, column - 1, span)
             ),
             None,
         )

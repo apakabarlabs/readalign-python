@@ -13,6 +13,7 @@ class Rules:
     mismatch_penalty: float
     room_enough: float
     join_span: int
+    vouched_join_span: int
     english_vowels: str
     silent_ending: str
     silent_ending_except_after: str
