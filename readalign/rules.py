@@ -33,8 +33,10 @@ class Rules:
     piece_seconds: float
     shortest_piece_share: float
     pause_seconds: float
+    edge_overlap: float
     ask_again_trims: list[float]
     shortest_worth_asking_again: float
+    partial_answer_overlap: float
 
     def joins(self, character: str) -> bool:
         """Whether this mark writes one consonant joined to the next, making them one letter."""

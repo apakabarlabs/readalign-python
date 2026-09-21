@@ -229,6 +229,7 @@ def test_leaves_no_sample_out_of_every_piece(case: dict) -> None:
 
 JOIN_CASES = load("piece_tests.yaml")["joins"]
 JOIN_REFUSALS = load("piece_tests.yaml")["join_refusals"]
+HEARD_CASES = load("piece_tests.yaml")["heard"]
 
 
 def transcripts_of(case: dict) -> list[list[RecognizedWord]]:
@@ -252,6 +253,24 @@ def test_joins_the_pieces_into_the_reading_the_corpus_names(case: dict) -> None:
 def test_refuses_a_piece_and_its_transcript_that_do_not_pair_off(case: dict) -> None:
     with pytest.raises(UnevenPiecesError):
         joined(transcripts_of(case), pieces_of(case), case["sample_rate"])
+
+
+@pytest.mark.parametrize("case", HEARD_CASES, ids=[case["name"] for case in HEARD_CASES])
+def test_recovers_what_the_corpus_says(case: dict) -> None:
+    answers = [
+        [RecognizedWord(word["text"], word["start"], word["end"]) for word in answer] for answer in case["answers"]
+    ]
+    asked: list[int] = []
+
+    def recognise(given: Sequence[float]) -> list[RecognizedWord]:
+        asked.append(len(given))
+        return answers.pop(0)
+
+    words = heard(waveform_of(case), case["sample_rate"], recognise)
+
+    expected = [RecognizedWord(word["text"], word["start"], word["end"]) for word in case["equals"]]
+    assert words == expected, f"{case['name']}: {words}"
+    assert asked == case["asked_lengths"], f"{case['name']}: asked {asked}"
 
 
 SAMPLE_RATE = 16_000

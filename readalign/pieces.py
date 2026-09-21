@@ -59,11 +59,9 @@ def cuts(samples: Sequence[float], sample_rate: float) -> list[tuple[int, int]]:
     enough for the runtime to take whole; where no pause falls there, it ends on length
     alone, because a piece that grows to find a pause is the very window this avoids. The
     next piece begins one pause earlier than the last ended, so every word is heard whole
-    by at least one of them. Where no pause offers itself the two meet edge to edge and
-    share nothing, which costs a word at that seam on a runtime that pads its input; a floor
-    on the overlap was measured against that and cost more than it saved, because moving a
-    piece changes the length of what the model is asked and this model answers a different
-    length with different words.
+    by at least one of them. Where that would leave no overlap, the next piece begins by
+    `edge_overlap` instead. This is confined to empty seams: a floor that moved every
+    shorter overlap was measured worse.
     """
     longest = int(rules().piece_seconds * sample_rate)
     if len(samples) <= longest or longest <= 0:
@@ -81,7 +79,7 @@ def cuts(samples: Sequence[float], sample_rate: float) -> list[tuple[int, int]]:
         # the words at the seam, and a pause near the start of this piece would hand the
         # next one almost the same range, over and over.
         back = [mark for mark in marks if start + shortest <= mark < cut]
-        start = back[-1] if back else cut
+        start = back[-1] if back else max(start, cut - int(rules().edge_overlap * sample_rate))
     pieces.append((start, len(samples)))
     return pieces
 
@@ -177,7 +175,7 @@ def heard(
     sample_rate: float,
     asking: Callable[[Sequence[float]], Sequence[RecognizedWord]],
 ) -> list[RecognizedWord]:
-    """Ask the recogniser for one piece, and again with less of its tail while nothing comes.
+    """Ask for one piece, recovering an empty or prematurely stopped answer.
 
     Parakeet answers some pieces of ordinary speech with no words at all, and whether it
     does turns on where the piece starts and how long it is together: the mel statistics
@@ -187,11 +185,17 @@ def heard(
     silent pays for the whole list before answering nothing, which is why a piece shorter
     than `shortest_worth_asking_again` is not asked again at all.
 
-    An answer won this way is missing whatever was said in the tail that was cut off. Each
-    piece the recording is cut into overlaps the next, and that overlap is what covers it.
+    A non-empty answer can also stop before speech resumes later in its audio. That tail
+    is asked again with already recognised context and accepted only when the two answers
+    share enough words to join without a duplicate.
+
+    An empty answer won by trimming is missing whatever was said in the tail that was cut
+    off. Each piece overlaps the next, and that overlap is what covers it.
     """
     words = list(asking(piece))
-    if words or len(piece) / sample_rate < rules().shortest_worth_asking_again:
+    if words:
+        return _recovered_tail(words, piece, sample_rate, asking)
+    if len(piece) / sample_rate < rules().shortest_worth_asking_again:
         return words
     for trim in rules().ask_again_trims:
         shorter = len(piece) - int(trim * sample_rate)
@@ -201,3 +205,34 @@ def heard(
         if again:
             return again
     return words
+
+
+def _recovered_tail(
+    words: list[RecognizedWord],
+    piece: Sequence[float],
+    sample_rate: float,
+    asking: Callable[[Sequence[float]], Sequence[RecognizedWord]],
+) -> list[RecognizedWord]:
+    frames = energy_frames(piece, sample_rate)
+    threshold = speech_threshold(frames)
+    first_frame = int(words[-1].end / rules().frame_seconds)
+    went_quiet = False
+    for energy in frames[first_frame:]:
+        if energy < threshold:
+            went_quiet = True
+        elif went_quiet:
+            break
+    else:
+        return words
+
+    overlap_from = max(0.0, words[-1].start - rules().partial_answer_overlap)
+    start = int(overlap_from * sample_rate)
+    offset = start / sample_rate
+    coming = [RecognizedWord(word.text, word.start + offset, word.end + offset) for word in asking(piece[start:])]
+    kept_after, coming_up_to = _agreement(words, coming, offset, len(piece) / sample_rate)
+    if not coming_up_to and coming and normalize(words[-1].text) == normalize(coming[0].text):
+        coming_up_to = 1
+    if not coming_up_to:
+        return words
+    kept = words[:-kept_after] if kept_after else words
+    return [*kept, *coming[coming_up_to:]]

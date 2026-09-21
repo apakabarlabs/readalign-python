@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.14.0
+
+### Fixed
+- `heard` recovers a non-empty answer when quiet follows its last word and speech then
+  resumes in the same piece. It asks again from two seconds before that word and joins
+  the answer only at shared normalised words; without an agreement it keeps the original
+  answer.
+- Pieces that had no shared audio now overlap by up to two seconds, whether the cut itself
+  fell on a pause or on the length limit. A seam that already had a pause-based overlap
+  is unchanged.
+
 ## 0.13.1
 
 - The distribution and module now both report the release version. The stale
