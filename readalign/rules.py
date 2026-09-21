@@ -36,6 +36,7 @@ class Rules:
     edge_overlap: float
     ask_again_trims: list[float]
     shortest_worth_asking_again: float
+    uncovered_head_seconds: float
     partial_answer_overlap: float
 
     def joins(self, character: str) -> bool:

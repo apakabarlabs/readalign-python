@@ -205,6 +205,7 @@ def heard(
     piece: Sequence[float],
     sample_rate: float,
     asking: Callable[[Sequence[float]], Sequence[RecognizedWord]],
+    covered_prefix: float = 0.0,
 ) -> list[RecognizedWord]:
     """Ask for one piece, recovering an empty or prematurely stopped answer.
 
@@ -225,7 +226,8 @@ def heard(
     """
     words = list(asking(piece))
     if words:
-        return _recovered_tail(words, piece, sample_rate, asking)
+        with_head = _recovered_head(words, piece, sample_rate, covered_prefix, asking)
+        return _recovered_tail(with_head, piece, sample_rate, asking)
     if len(piece) / sample_rate < rules().shortest_worth_asking_again:
         return words
     for trim in rules().ask_again_trims:
@@ -234,8 +236,37 @@ def heard(
             break
         again = list(asking(piece[:shorter]))
         if again:
-            return again
+            with_head = _recovered_head(again, piece, sample_rate, covered_prefix, asking)
+            return _recovered_tail(with_head, piece, sample_rate, asking)
     return words
+
+
+def _recovered_head(
+    words: list[RecognizedWord],
+    piece: Sequence[float],
+    sample_rate: float,
+    covered_prefix: float,
+    asking: Callable[[Sequence[float]], Sequence[RecognizedWord]],
+) -> list[RecognizedWord]:
+    if words[0].start - covered_prefix < rules().uncovered_head_seconds:
+        return words
+    before_first = piece[: int(words[0].start * sample_rate)]
+    marks = pauses(before_first, sample_rate)
+    if not marks:
+        return words
+    head = piece[: marks[-1]]
+    recovered = list(asking(head))
+    if not recovered:
+        for trim in rules().ask_again_trims:
+            shorter = len(head) - int(trim * sample_rate)
+            if shorter <= 0:
+                break
+            recovered = list(asking(head[:shorter]))
+            if recovered:
+                break
+    if not recovered:
+        return words
+    return [*recovered, *words]
 
 
 def _recovered_tail(

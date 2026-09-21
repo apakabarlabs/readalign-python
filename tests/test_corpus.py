@@ -266,7 +266,12 @@ def test_recovers_what_the_corpus_says(case: dict) -> None:
         asked.append(len(given))
         return answers.pop(0)
 
-    words = heard(waveform_of(case), case["sample_rate"], recognise)
+    words = heard(
+        waveform_of(case),
+        case["sample_rate"],
+        recognise,
+        covered_prefix=case.get("covered_prefix", 0.0),
+    )
 
     expected = [RecognizedWord(word["text"], word["start"], word["end"]) for word in case["equals"]]
     assert words == expected, f"{case['name']}: {words}"
