@@ -9,6 +9,7 @@ the cut is made here, by rule, before any of them is asked.
 
 from collections.abc import Callable, Sequence
 from itertools import dropwhile, takewhile
+from typing import NamedTuple
 
 from .rules import rules
 from .silence import energy_frames, speech_threshold
@@ -115,10 +116,11 @@ def joined(
     for words, (start, end) in zip(heard, pieces, strict=True):
         offset = start / sample_rate
         placed = [RecognizedWord(text=word.text, start=word.start + offset, end=word.end + offset) for word in words]
-        kept_after_it, coming_up_to_it = _agreement(reading, placed, offset, covered_to)
-        if kept_after_it:
-            del reading[len(reading) - kept_after_it :]
-        reading += placed[coming_up_to_it:]
+        seam = _agreement(reading, placed, offset, covered_to)
+        reading[seam.insertion_at : seam.insertion_at] = placed[: seam.coming_before_it]
+        if seam.kept_after_it:
+            del reading[len(reading) - seam.kept_after_it :]
+        reading += placed[seam.coming_up_to_it :]
         covered_to = end / sample_rate
     return reading
 
@@ -128,7 +130,7 @@ def _agreement(
     coming: Sequence[RecognizedWord],
     overlap_from: float,
     covered_to: float,
-) -> tuple[int, int]:
+) -> "_Seam":
     """Find the longest run the two pieces say alike in the ground they both cover.
 
     Answers how many words come off the end of the reading so far and how many off the
@@ -151,9 +153,11 @@ def _agreement(
     tail = [normalize(word.text) for word in dropwhile(lambda word: word.start < overlap_from, kept)]
     head = [normalize(word.text) for word in takewhile(lambda word: word.start < covered_to, coming)]
     if not tail or not head:
-        return 0, 0
+        return _Seam(0, 0, len(kept), 0)
 
     longest = 0
+    starts_in_tail = 0
+    starts_in_head = 0
     ends_in_tail = 0
     ends_in_head = 0
     for first in range(len(tail)):
@@ -163,11 +167,25 @@ def _agreement(
                 run += 1
             if run > longest:
                 longest = run
+                starts_in_tail = first
+                starts_in_head = second
                 ends_in_tail = first + run
                 ends_in_head = second + run
     if longest > 1 or longest == len(head):
-        return len(tail) - ends_in_tail, ends_in_head
-    return 0, 0
+        return _Seam(
+            len(tail) - ends_in_tail,
+            ends_in_head,
+            len(kept) - len(tail) + starts_in_tail,
+            starts_in_head,
+        )
+    return _Seam(0, 0, len(kept), 0)
+
+
+class _Seam(NamedTuple):
+    kept_after_it: int
+    coming_up_to_it: int
+    insertion_at: int
+    coming_before_it: int
 
 
 def heard(
@@ -194,7 +212,8 @@ def heard(
     """
     words = list(asking(piece))
     if words:
-        return _recovered_tail(words, piece, sample_rate, asking)
+        with_head = _recovered_head(words, piece, sample_rate, asking)
+        return _recovered_tail(with_head, piece, sample_rate, asking)
     if len(piece) / sample_rate < rules().shortest_worth_asking_again:
         return words
     for trim in rules().ask_again_trims:
@@ -205,6 +224,37 @@ def heard(
         if again:
             return again
     return words
+
+
+def _recovered_head(
+    words: list[RecognizedWord],
+    piece: Sequence[float],
+    sample_rate: float,
+    asking: Callable[[Sequence[float]], Sequence[RecognizedWord]],
+) -> list[RecognizedWord]:
+    frames = energy_frames(piece, sample_rate)
+    threshold = speech_threshold(frames)
+    last_frame = min(int(words[0].start / rules().frame_seconds), len(frames))
+    heard_speech = False
+    went_quiet = False
+    for energy in frames[:last_frame]:
+        if energy >= threshold:
+            heard_speech = True
+        elif heard_speech:
+            went_quiet = True
+    if not went_quiet:
+        return words
+
+    through = min(len(piece), int((words[0].end + rules().partial_answer_overlap) * sample_rate))
+    recovered = list(asking(piece[:through]))
+    seam = _agreement(recovered, words, 0.0, through / sample_rate)
+    coming_up_to = seam.coming_up_to_it
+    if not coming_up_to and recovered and normalize(recovered[-1].text) == normalize(words[0].text):
+        coming_up_to = 1
+    if not coming_up_to:
+        return words
+    kept = recovered[: -seam.kept_after_it] if seam.kept_after_it else recovered
+    return [*kept, *words[coming_up_to:]]
 
 
 def _recovered_tail(
@@ -229,7 +279,9 @@ def _recovered_tail(
     start = int(overlap_from * sample_rate)
     offset = start / sample_rate
     coming = [RecognizedWord(word.text, word.start + offset, word.end + offset) for word in asking(piece[start:])]
-    kept_after, coming_up_to = _agreement(words, coming, offset, len(piece) / sample_rate)
+    seam = _agreement(words, coming, offset, len(piece) / sample_rate)
+    kept_after = seam.kept_after_it
+    coming_up_to = seam.coming_up_to_it
     if not coming_up_to and coming and normalize(words[-1].text) == normalize(coming[0].text):
         coming_up_to = 1
     if not coming_up_to:
