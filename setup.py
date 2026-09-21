@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name="readalign",
-    version="0.15.1",
+    version="0.15.2",
     packages=["readalign"],
     package_data={"readalign": ["rules.yaml"]},
     install_requires=["PyYAML>=6.0.3"],

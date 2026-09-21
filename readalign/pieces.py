@@ -117,7 +117,6 @@ def joined(
         offset = start / sample_rate
         placed = [RecognizedWord(text=word.text, start=word.start + offset, end=word.end + offset) for word in words]
         seam = _agreement(reading, placed, offset, covered_to)
-        reading[seam.insertion_at : seam.insertion_at] = placed[: seam.coming_before_it]
         if seam.kept_after_it:
             del reading[len(reading) - seam.kept_after_it :]
         reading += placed[seam.coming_up_to_it :]
@@ -153,11 +152,9 @@ def _agreement(
     tail = [normalize(word.text) for word in dropwhile(lambda word: word.start < overlap_from, kept)]
     head = [normalize(word.text) for word in takewhile(lambda word: word.start < covered_to, coming)]
     if not tail or not head:
-        return _Seam(0, 0, len(kept), 0)
+        return _Seam(0, 0)
 
     longest = 0
-    starts_in_tail = 0
-    starts_in_head = 0
     ends_in_tail = 0
     ends_in_head = 0
     for first in range(len(tail)):
@@ -167,25 +164,16 @@ def _agreement(
                 run += 1
             if run > longest:
                 longest = run
-                starts_in_tail = first
-                starts_in_head = second
                 ends_in_tail = first + run
                 ends_in_head = second + run
     if longest > 1 or longest == len(head):
-        return _Seam(
-            len(tail) - ends_in_tail,
-            ends_in_head,
-            len(kept) - len(tail) + starts_in_tail,
-            starts_in_head,
-        )
-    return _Seam(0, 0, len(kept), 0)
+        return _Seam(len(tail) - ends_in_tail, ends_in_head)
+    return _Seam(0, 0)
 
 
 class _Seam(NamedTuple):
     kept_after_it: int
     coming_up_to_it: int
-    insertion_at: int
-    coming_before_it: int
 
 
 def heard(
