@@ -212,8 +212,7 @@ def heard(
     """
     words = list(asking(piece))
     if words:
-        with_head = _recovered_head(words, piece, sample_rate, asking)
-        return _recovered_tail(with_head, piece, sample_rate, asking)
+        return _recovered_tail(words, piece, sample_rate, asking)
     if len(piece) / sample_rate < rules().shortest_worth_asking_again:
         return words
     for trim in rules().ask_again_trims:
@@ -224,37 +223,6 @@ def heard(
         if again:
             return again
     return words
-
-
-def _recovered_head(
-    words: list[RecognizedWord],
-    piece: Sequence[float],
-    sample_rate: float,
-    asking: Callable[[Sequence[float]], Sequence[RecognizedWord]],
-) -> list[RecognizedWord]:
-    frames = energy_frames(piece, sample_rate)
-    threshold = speech_threshold(frames)
-    last_frame = min(int(words[0].start / rules().frame_seconds), len(frames))
-    heard_speech = False
-    went_quiet = False
-    for energy in frames[:last_frame]:
-        if energy >= threshold:
-            heard_speech = True
-        elif heard_speech:
-            went_quiet = True
-    if not went_quiet:
-        return words
-
-    through = min(len(piece), int((words[0].end + rules().partial_answer_overlap) * sample_rate))
-    recovered = list(asking(piece[:through]))
-    seam = _agreement(recovered, words, 0.0, through / sample_rate)
-    coming_up_to = seam.coming_up_to_it
-    if not coming_up_to and recovered and normalize(recovered[-1].text) == normalize(words[0].text):
-        coming_up_to = 1
-    if not coming_up_to:
-        return words
-    kept = recovered[: -seam.kept_after_it] if seam.kept_after_it else recovered
-    return [*kept, *words[coming_up_to:]]
 
 
 def _recovered_tail(

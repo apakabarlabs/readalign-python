@@ -121,12 +121,12 @@ assert spans[1].start == 1.0
 ## Install
 
 ```
-pip install git+https://github.com/apakabarlabs/readalign-python@v0.15.0
+pip install git+https://github.com/apakabarlabs/readalign-python@v0.15.1
 ```
 
 Not on PyPI yet, so a consumer takes it from the tag.
 
-The API at 0.15.0 is not settled and may change without a major version.
+The API at 0.15.1 is not settled and may change without a major version.
 
 ## Develop
 
