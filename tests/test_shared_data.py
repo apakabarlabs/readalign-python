@@ -36,7 +36,7 @@ SHARED = [
 
 @pytest.mark.parametrize(("there", "here"), SHARED, ids=[here.name for _, here in SHARED])
 def test_the_shared_file_is_the_one_it_was_copied_from(there: str, here: Path) -> None:
-    with urlopen(ORIGIN + there, timeout=TIMEOUT) as answer:  # noqa: S310
+    with urlopen(ORIGIN + there, timeout=TIMEOUT) as answer:
         origin = answer.read().decode("utf-8")
     stale = f"{here.name} differs from the leading port; run `make sync-yaml`"
     assert here.read_text(encoding="utf-8") == origin, stale
