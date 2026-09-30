@@ -6,7 +6,7 @@ Lines a speech recogniser's output up against the text that was read, and says w
 
 This is not transcription. The words are known in advance; the recogniser is only asked where they are, and it will get some of them wrong. So words are matched by how alike they look on paper rather than by equality, and a word left unmatched has its time interpolated from the words around it.
 
-This is a Python port of [readalign-swift](https://github.com/apakabarlabs/readalign-swift). The tuned numbers and the cases both libraries are held to are synced from there with `make sync-yaml`, so the two cannot quietly drift apart.
+This is a Python port of [readalign-swift](https://github.com/apakabarlabs/readalign-swift). The tuned numbers and the cases both libraries are held to are synced from its `make sync-yaml`, so the two cannot quietly drift apart.
 
 ## What it handles
 
@@ -135,7 +135,7 @@ make install
 make test
 make lint
 make docs        # the API reference, into build/docs
-make sync-yaml   # after the rules or the cases change in readalign-swift
+make -C ../readalign-swift sync-yaml   # after the rules or cases change there
 ```
 
 ## Documentation
