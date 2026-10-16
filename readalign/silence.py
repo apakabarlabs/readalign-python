@@ -1,3 +1,4 @@
+import math
 from collections.abc import Sequence
 
 from .rules import rules
@@ -76,7 +77,7 @@ def widened(
     recording, or `limit` from its own mark. An edge that meets no quiet before one of
     those stays where it was: with no pause between two words there is nothing to give
     either of them. So does an edge that would move by less than `least_widening`, each
-    edge judged on its own.
+    edge judged on its own and the distance counted in samples.
     """
     frames = energy_frames(samples, sample_rate)
     if not frames:
@@ -119,11 +120,18 @@ def widened(
             end = min((frame + 1) * each_frame, ceiling)
             frame += 1
 
-        least = rules().least_widening
+        least = in_samples(rules().least_widening, sample_rate)
+        start_moves = in_samples(span.start - start, sample_rate) >= least
+        end_moves = in_samples(end - span.end, sample_rate) >= least
         outcome.append(
             WordSpan(
-                start if went_quiet and span.start - start >= least else span.start,
-                end if end_went_quiet and end - span.end >= least else span.end,
+                start if went_quiet and start_moves else span.start,
+                end if end_went_quiet and end_moves else span.end,
             )
         )
     return outcome
+
+
+def in_samples(seconds: float, sample_rate: float) -> int:
+    """Half a sample rounds up, as the Swift and Kotlin ports round it, not to even."""
+    return math.floor(seconds * sample_rate + 0.5)
