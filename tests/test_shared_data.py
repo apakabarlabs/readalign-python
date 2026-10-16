@@ -28,6 +28,7 @@ SHARED = [
             "match_tests.yaml",
             "pair_tests.yaml",
             "piece_tests.yaml",
+            "widen_tests.yaml",
             "word_tests.yaml",
         )
     ],

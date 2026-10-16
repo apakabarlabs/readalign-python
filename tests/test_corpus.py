@@ -6,7 +6,7 @@ import pytest
 from readalign.aligner import align, fill, match, pair
 from readalign.pieces import UnevenPiecesError, cuts, heard, joined, pauses
 from readalign.rules import rules
-from readalign.silence import energy_frames, held, speech_level
+from readalign.silence import energy_frames, held, speech_level, widened
 from readalign.weighting import EnglishSyllableWeighting
 from readalign.words import RecognizedWord, WordSpan, letters, normalize, printed_parts, similarity, spoken
 from tests.corpus import (
@@ -122,6 +122,20 @@ def test_holds_as_the_corpus_says(case: dict) -> None:
     marks = [WordSpan(mark["start"], mark["end"]) for mark in case["spans"]]
 
     spans = held(marks, waveform_of(case), case["sample_rate"], case.get("limit", rules().hold_limit))
+
+    check_well_formed(spans, len(marks), name)
+    for expectation in case.get("want", []):
+        check_span(spans[expectation["word"]], expectation, name)
+
+
+@named("widen_tests.yaml")
+def test_widens_as_the_corpus_says(case: dict) -> None:
+    name = case["name"]
+    assert asserts_something(case, "want"), f"{name}: asserts nothing"
+
+    marks = [WordSpan(mark["start"], mark["end"]) for mark in case["spans"]]
+
+    spans = widened(marks, waveform_of(case), case["sample_rate"], case.get("limit", rules().hold_limit))
 
     check_well_formed(spans, len(marks), name)
     for expectation in case.get("want", []):

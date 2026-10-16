@@ -59,3 +59,69 @@ def held(
             frame += 1
         outcome.append(WordSpan(span.start, min(max(span.end, end), max(following, span.start))))
     return outcome
+
+
+def widened(
+    spans: list[WordSpan],
+    samples: Sequence[float],
+    sample_rate: float,
+    limit: float | None = None,
+) -> list[WordSpan]:
+    """Each word given the quiet on both sides of it, so that a cut along its edges keeps
+    the consonants a recogniser leaves outside its mark.
+
+    A start goes back from its mark through the word's own sound and then through the
+    quiet before it, and stops where the recording speaks again; an end goes on the same
+    way. Neither passes the middle of the gap to the neighbouring mark, the ends of the
+    recording, or `limit` from its own mark. An edge that meets no quiet before one of
+    those stays where it was: with no pause between two words there is nothing to give
+    either of them.
+    """
+    frames = energy_frames(samples, sample_rate)
+    if not frames:
+        return spans
+
+    limit = rules().hold_limit if limit is None else limit
+    threshold = speech_threshold(frames)
+    size = max(int(rules().frame_seconds * sample_rate), 1)
+    each_frame = size / sample_rate
+    duration = len(samples) / sample_rate
+
+    outcome = []
+    for index, span in enumerate(spans):
+        floor = max(0.0, span.start - limit)
+        if index > 0:
+            floor = max(floor, (spans[index - 1].end + span.start) / 2)
+        ceiling = min(duration, span.end + limit)
+        if index + 1 < len(spans):
+            ceiling = min(ceiling, (span.end + spans[index + 1].start) / 2)
+
+        start = span.start
+        frame = (round(span.start * sample_rate) + size - 1) // size - 1
+        went_quiet = False
+        while 0 <= frame < len(frames) and (frame + 1) * each_frame > floor:
+            if frames[frame] < threshold:
+                went_quiet = True
+            elif went_quiet:
+                break
+            start = max(frame * each_frame, floor)
+            frame -= 1
+
+        end = span.end
+        frame = round(span.end * sample_rate) // size
+        end_went_quiet = False
+        while 0 <= frame < len(frames) and frame * each_frame < ceiling:
+            if frames[frame] < threshold:
+                end_went_quiet = True
+            elif end_went_quiet:
+                break
+            end = min((frame + 1) * each_frame, ceiling)
+            frame += 1
+
+        outcome.append(
+            WordSpan(
+                min(start, span.start) if went_quiet else span.start,
+                max(end, span.end) if end_went_quiet else span.end,
+            )
+        )
+    return outcome

@@ -2,11 +2,11 @@ from .aligner import align, pair
 from .alignment import Equivalent
 from .pieces import UnevenPiecesError, cuts, heard, joined, pauses
 from .rules import rules
-from .silence import energy_frames, held, speech_level, speech_threshold
+from .silence import energy_frames, held, speech_level, speech_threshold, widened
 from .weighting import EnglishSyllableWeighting, EvenWeighting, SpeechWeighting
 from .words import RecognizedWord, WordMatch, WordSpan, fold, normalize, printed_parts, spoken
 
-__version__ = "0.17.0"
+__version__ = "0.18.0"
 __all__ = [
     "EnglishSyllableWeighting",
     "Equivalent",
@@ -31,4 +31,5 @@ __all__ = [
     "speech_level",
     "speech_threshold",
     "spoken",
+    "widened",
 ]
