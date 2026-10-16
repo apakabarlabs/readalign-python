@@ -28,6 +28,7 @@ class Rules:
     speech_above_room: float
     quietest_room: float
     hold_limit: float
+    least_widening: float
     speech_from_loudest_share: float
     quietest_speech: float
     piece_seconds: float

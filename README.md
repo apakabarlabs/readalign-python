@@ -99,7 +99,7 @@ assert spans[0].end > 0.10
 
 ### Cutting one word out with the quiet around it
 
-A recogniser also marks a word from where it is sure of it, which is past the consonant the word opens with: the burst of a `c` or a `ch` is quieter than the voice and comes before the vowel. Cut at the marks, `crime` is heard as `prime`. `widened` moves each start back through the quiet before the word and each end on through the quiet after it, stopping where the recording speaks again. Neither edge passes the middle of the gap to the neighbouring mark, the ends of the recording, or `hold_limit` from its own mark, and an edge with no quiet before any of those stays where it was.
+A recogniser also marks a word from where it is sure of it, which is past the consonant the word opens with: the burst of a `c` or a `ch` is quieter than the voice and comes before the vowel. Cut at the marks, `crime` is heard as `prime`. `widened` moves each start back through the quiet before the word and each end on through the quiet after it, stopping where the recording speaks again. Neither edge passes the middle of the gap to the neighbouring mark, the ends of the recording, or `hold_limit` from its own mark, and an edge with no quiet before any of those stays where it was. So does an edge that would move by less than `least_widening`: a few milliseconds change nothing a listener hears, but they change what a recogniser answers about the cut.
 
 ```python
 from readalign import WordSpan, widened

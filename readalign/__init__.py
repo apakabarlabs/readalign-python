@@ -6,7 +6,7 @@ from .silence import energy_frames, held, speech_level, speech_threshold, widene
 from .weighting import EnglishSyllableWeighting, EvenWeighting, SpeechWeighting
 from .words import RecognizedWord, WordMatch, WordSpan, fold, normalize, printed_parts, spoken
 
-__version__ = "0.18.0"
+__version__ = "0.19.0"
 __all__ = [
     "EnglishSyllableWeighting",
     "Equivalent",

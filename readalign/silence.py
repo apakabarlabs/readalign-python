@@ -75,7 +75,8 @@ def widened(
     way. Neither passes the middle of the gap to the neighbouring mark, the ends of the
     recording, or `limit` from its own mark. An edge that meets no quiet before one of
     those stays where it was: with no pause between two words there is nothing to give
-    either of them.
+    either of them. So does an edge that would move by less than `least_widening`, each
+    edge judged on its own.
     """
     frames = energy_frames(samples, sample_rate)
     if not frames:
@@ -118,10 +119,11 @@ def widened(
             end = min((frame + 1) * each_frame, ceiling)
             frame += 1
 
+        least = rules().least_widening
         outcome.append(
             WordSpan(
-                min(start, span.start) if went_quiet else span.start,
-                max(end, span.end) if end_went_quiet else span.end,
+                start if went_quiet and span.start - start >= least else span.start,
+                end if end_went_quiet and end - span.end >= least else span.end,
             )
         )
     return outcome
