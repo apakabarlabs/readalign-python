@@ -83,11 +83,13 @@ def widened(
     either of them. So does an edge that would move by less than `least_widening`, each
     edge judged on its own and the distance counted in samples.
 
-    Two words marked edge to edge share that edge, and where it falls inside a sound it
-    goes first to the middle of the nearest pause within `limit`, as two words with a gap
-    between their marks meet there: the recogniser marks a word from where it is sure of it, so the opening hiss of
-    the next word sounds before its mark. It goes no further than the middle of either
-    word, so a short word keeps the pause after it.
+    Where an edge between two words falls inside a sound, both words first meet in the
+    middle of the nearest pause within `limit` of it: the recogniser marks a word from
+    where it is sure of it, so the opening hiss of the next word, or the first stretch of
+    a vowel it opens with, sounds before its mark. That holds for two words marked edge
+    to edge and for two with a gap between their marks alike, since the gap can lie in
+    the next word's own sound. The edge goes no further than the middle of either word,
+    so a short word keeps the pause after it, and words whose marks overlap keep them.
     """
     frames = energy_frames(samples, sample_rate)
     if not frames:
@@ -155,18 +157,17 @@ def _settled(
     settled = list(spans)
     for index in range(len(settled) - 1):
         word, following = settled[index], settled[index + 1]
-        if in_samples(word.end, sample_rate) != in_samples(following.start, sample_rate):
+        if in_samples(word.end, sample_rate) > in_samples(following.start, sample_rate):
             continue
-        seam = following.start
-        frame = _half_up(seam / each_frame)
-        if not (0 < frame < len(frames)) or frames[frame - 1] < threshold or frames[frame] < threshold:
+        loud = [edge for edge in (following.start, word.end) if _in_sound(edge, frames, threshold, each_frame)]
+        if not loud:
             continue
-        lowest = (word.start + seam) / 2
+        lowest = (word.start + word.end) / 2
         highest = (following.start + following.end) / 2
         reachable = []
         for run_start, run_end in pauses:
             start, end = run_start * each_frame, run_end * each_frame
-            distance = seam - end if end <= seam else start - seam
+            distance = min(edge - end if end <= edge else start - edge for edge in loud)
             middle = (start + end) / 2
             if distance <= limit and lowest <= middle <= highest:
                 reachable.append((distance, middle))
@@ -176,6 +177,11 @@ def _settled(
         settled[index] = WordSpan(word.start, middle)
         settled[index + 1] = WordSpan(middle, following.end)
     return settled
+
+
+def _in_sound(at: float, frames: list[float], threshold: float, each_frame: float) -> bool:
+    frame = _half_up(at / each_frame)
+    return 0 < frame < len(frames) and frames[frame - 1] >= threshold and frames[frame] >= threshold
 
 
 def _half_up(value: float) -> int:
