@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.22.1
+
+### Fixed
+- The package reports 0.22.1. The 0.22.0 tag still declared 0.21.0, so pip treated an
+  installed 0.21.0 as the requested version and kept it.
+
 ## 0.22.0
 
 ### Changed
