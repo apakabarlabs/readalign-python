@@ -3,30 +3,42 @@
 ## 0.22.1
 
 ### Fixed
-- The package reports 0.22.1. The 0.22.0 tag still declared 0.21.0, so pip treated an
-  installed 0.21.0 as the requested version and kept it.
+- The package reports its own version again. The 0.22.0 release still declared 0.21.0,
+  so `pip install -r requirements.txt` over an existing 0.21.0 kept 0.21.0 and the
+  0.22.0 change never arrived. If you installed 0.22.0 that way, check
+  `readalign.__version__` and install 0.22.1. The Swift and Kotlin ports were not
+  affected and have no 0.22.1.
 
 ## 0.22.0
 
 ### Changed
-- `widened` moves an edge in sound to the middle of the nearest pause whether the two
-  words are marked edge to edge or with a gap between their marks. A word that opens
-  with a vowel is marked a fifth of a second into it, while the word before is marked to
-  end where the vowel begins; the gap was the vowel itself, and the start was cut inside
-  it. Words whose marks overlap still keep them.
+- `widened` also moves a cut between two words that falls inside a sound when the
+  recogniser left a gap between their timestamps, not only when the earlier word's end
+  equals the next word's start. A word that begins with a vowel usually gets a start
+  timestamp about 0.2 s into the vowel, while the word before ends where the vowel
+  begins, so the cut fell inside the vowel and clipped the start of the word. The two
+  words now share one cut in the middle of the pause before the vowel. To find that
+  pause, a word end inside a sound searches forward and a word start searches backward;
+  words whose timestamps overlap are left as they are.
+- No code change is needed to upgrade, but cuts can move: across the 154 recorded
+  sonnets of the test corpus, 35 of about 17,500 word boundaries moved, 22 of them out
+  of sound and none into it.
 
 ## 0.21.0
 
 ### Changed
-- `speech_threshold` counts nothing quieter than `quiet_below_voice` (2%) of the voice as speech,
-  however quiet the room. A synthesised reading with stretches of exact zero set its room
-  at zero, and the hiss of every pause between words passed for speech. None of 154
-  recorded sonnets has its threshold below 3% of the voice, so they cut as before.
-- `widened` moves the edge two words marked edge to edge share into the middle of the
-  nearest pause within `hold_limit` when the edge falls inside a sound, no further than
-  the middle of either word. A list read in one breath comes back marked edge to edge,
-  and the next word's opening `s` or `f` sounds before its mark: cut there, the earlier
-  word ended on it.
+- `speech_threshold` no longer counts anything quieter than 2% of the recording's voice
+  level as speech (`quiet_below_voice` in `rules.yaml`). A synthesised recording with
+  stretches of exact digital silence set the noise floor at zero, so the faint hiss in
+  every pause counted as speech and no pause was found. Recordings of real speech keep
+  their thresholds: none of the 154 sonnets of the test corpus falls below 3%.
+- `widened` moves the cut shared by two adjacent words, where the earlier word's end
+  timestamp equals the next word's start, into the middle of the nearest pause when that
+  cut falls inside a sound. It moves at most `hold_limit` (0.6 s) and no further than the
+  middle of either word. In a list read with no gap between timestamps, the next word's
+  opening `s` or `f` sounds before its timestamp, and a cut there left that sound at the
+  end of the earlier word.
+- No code change is needed to upgrade; cuts and detected pauses can move.
 
 ## 0.20.0
 
