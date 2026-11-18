@@ -1,7 +1,4 @@
-.PHONY: install build test-build test lint format clean docs
-
-clean:
-	rm -rf build dist *.egg-info .pytest_cache .ruff_cache
+.PHONY: install build test-build test lint format docs
 
 install:
 	python3 -m venv venv
