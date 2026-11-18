@@ -1,5 +1,6 @@
 import math
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from .rules import rules
 from .words import WordSpan
@@ -159,7 +160,15 @@ def _settled(
         word, following = settled[index], settled[index + 1]
         if in_samples(word.end, sample_rate) > in_samples(following.start, sample_rate):
             continue
-        loud = [edge for edge in (following.start, word.end) if _in_sound(edge, frames, threshold, each_frame)]
+        touching = in_samples(word.end, sample_rate) == in_samples(following.start, sample_rate)
+        loud = [
+            edge
+            for edge in (
+                _EdgeInSound(following.start, looks_back=True, looks_on=touching),
+                _EdgeInSound(word.end, looks_back=touching, looks_on=True),
+            )
+            if _in_sound(edge.time, frames, threshold, each_frame)
+        ]
         if not loud:
             continue
         lowest = (word.start + word.end) / 2
@@ -167,7 +176,14 @@ def _settled(
         reachable = []
         for run_start, run_end in pauses:
             start, end = run_start * each_frame, run_end * each_frame
-            distance = min(edge - end if end <= edge else start - edge for edge in loud)
+            distance = min(
+                (
+                    edge.time - end if end <= edge.time else start - edge.time
+                    for edge in loud
+                    if (edge.looks_back if end <= edge.time else edge.looks_on)
+                ),
+                default=math.inf,
+            )
             middle = (start + end) / 2
             if distance <= limit and lowest <= middle <= highest:
                 reachable.append((distance, middle))
@@ -177,6 +193,13 @@ def _settled(
         settled[index] = WordSpan(word.start, middle)
         settled[index + 1] = WordSpan(middle, following.end)
     return settled
+
+
+@dataclass(frozen=True)
+class _EdgeInSound:
+    time: float
+    looks_back: bool
+    looks_on: bool
 
 
 def _in_sound(at: float, frames: list[float], threshold: float, each_frame: float) -> bool:
