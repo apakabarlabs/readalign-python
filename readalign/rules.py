@@ -27,6 +27,7 @@ class Rules:
     room_quantile: float
     speech_above_room: float
     quietest_room: float
+    quiet_below_voice: float
     hold_limit: float
     least_widening: float
     speech_from_loudest_share: float

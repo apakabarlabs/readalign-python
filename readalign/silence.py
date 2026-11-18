@@ -18,7 +18,11 @@ def speech_threshold(frames: Sequence[float]) -> float:
     if not frames:
         return 0.0
     room = sorted(frames)[int(len(frames) * rules().room_quantile)]
-    return max(room * rules().speech_above_room, rules().quietest_room)
+    return max(
+        room * rules().speech_above_room,
+        rules().quietest_room,
+        speech_level(frames) * rules().quiet_below_voice,
+    )
 
 
 def speech_level(frames: Sequence[float]) -> float:
@@ -78,6 +82,12 @@ def widened(
     those stays where it was: with no pause between two words there is nothing to give
     either of them. So does an edge that would move by less than `least_widening`, each
     edge judged on its own and the distance counted in samples.
+
+    Two words marked edge to edge share that edge, and where it falls inside a sound it
+    goes first to the middle of the nearest pause within `limit`, as two words with a gap
+    between their marks meet there: the recogniser marks a word from where it is sure of it, so the opening hiss of
+    the next word sounds before its mark. It goes no further than the middle of either
+    word, so a short word keeps the pause after it.
     """
     frames = energy_frames(samples, sample_rate)
     if not frames:
@@ -88,6 +98,7 @@ def widened(
     size = max(int(rules().frame_seconds * sample_rate), 1)
     each_frame = size / sample_rate
     duration = len(samples) / sample_rate
+    spans = _settled(spans, frames, threshold, each_frame, limit, sample_rate)
 
     outcome = []
     for index, span in enumerate(spans):
@@ -99,7 +110,7 @@ def widened(
             ceiling = min(ceiling, (span.end + spans[index + 1].start) / 2)
 
         start = span.start
-        frame = (round(span.start * sample_rate) + size - 1) // size - 1
+        frame = (in_samples(span.start, sample_rate) + size - 1) // size - 1
         went_quiet = False
         while 0 <= frame < len(frames) and (frame + 1) * each_frame > floor:
             if frames[frame] < threshold:
@@ -110,7 +121,7 @@ def widened(
             frame -= 1
 
         end = span.end
-        frame = round(span.end * sample_rate) // size
+        frame = in_samples(span.end, sample_rate) // size
         end_went_quiet = False
         while 0 <= frame < len(frames) and frame * each_frame < ceiling:
             if frames[frame] < threshold:
@@ -130,6 +141,62 @@ def widened(
             )
         )
     return outcome
+
+
+def _settled(
+    spans: list[WordSpan],
+    frames: list[float],
+    threshold: float,
+    each_frame: float,
+    limit: float,
+    sample_rate: float,
+) -> list[WordSpan]:
+    pauses = _quiet_runs(frames, threshold, max(_half_up(rules().pause_seconds / each_frame), 1))
+    settled = list(spans)
+    for index in range(len(settled) - 1):
+        word, following = settled[index], settled[index + 1]
+        if in_samples(word.end, sample_rate) != in_samples(following.start, sample_rate):
+            continue
+        seam = following.start
+        frame = _half_up(seam / each_frame)
+        if not (0 < frame < len(frames)) or frames[frame - 1] < threshold or frames[frame] < threshold:
+            continue
+        lowest = (word.start + seam) / 2
+        highest = (following.start + following.end) / 2
+        reachable = []
+        for run_start, run_end in pauses:
+            start, end = run_start * each_frame, run_end * each_frame
+            distance = seam - end if end <= seam else start - seam
+            middle = (start + end) / 2
+            if distance <= limit and lowest <= middle <= highest:
+                reachable.append((distance, middle))
+        if not reachable:
+            continue
+        middle = min(reachable)[1]
+        settled[index] = WordSpan(word.start, middle)
+        settled[index + 1] = WordSpan(middle, following.end)
+    return settled
+
+
+def _half_up(value: float) -> int:
+    """Half a frame rounds up, as the Swift and Kotlin ports round it, not to even."""
+    return math.floor(value + 0.5)
+
+
+def _quiet_runs(frames: list[float], threshold: float, at_least: int) -> list[tuple[int, int]]:
+    runs = []
+    start = None
+    for index, energy in enumerate(frames):
+        if energy < threshold:
+            if start is None:
+                start = index
+        elif start is not None:
+            if index - start >= at_least:
+                runs.append((start, index))
+            start = None
+    if start is not None and len(frames) - start >= at_least:
+        runs.append((start, len(frames)))
+    return runs
 
 
 def in_samples(seconds: float, sample_rate: float) -> int:
